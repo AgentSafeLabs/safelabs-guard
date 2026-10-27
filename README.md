@@ -6,7 +6,7 @@
 
 Built for the Meta AI Developer Hackathon by **Safe Labs AI Inc.** (Oct 26 - Nov 4)
 
-3-Minute Demo Video: _TODO — link not yet published_ | Live Demo: _TODO — not yet deployed_ | [Benchmark Results](#benchmark)
+3-Minute Demo Video: _TODO — link not yet published_ | Live Demo: _TODO — Vercel deploy pending_ | [Benchmark Results](#benchmark) | [Live Meta verification (proven)](#live-meta-verification-proven)
 
 ---
 
@@ -114,7 +114,7 @@ Run it yourself: `npm run benchmark`
 
 ![ASI-MM benchmark: unguarded 64% attack success drops to 0% with Safelabs Guard](docs/assets/04-benchmark-results.png)
 
-*Live proof bar from the PackProof demo. Run `npm run benchmark` to reproduce.*
+*Benchmark bar from the PackProof demo (ASI-MM cases run on mock perception clients; live Meta proof is in the Live Meta verification section below). Run `npm run benchmark` to reproduce.*
 
 **Methodology.**
 * **Unguarded** trusts Spark's claim only: if Muse Spark says every expected item for the current step is in the box, the agent ALLOWs; otherwise it HOLDs.
@@ -123,6 +123,48 @@ Run it yourself: `npm run benchmark`
 * Each case starts from a real ledger state at the case's step; perception comes from the mock Meta clients fed with the case data.
 
 **Honest note.** Missing-item cases B1-B5 were already HOLD unguarded, because Spark did not claim the step complete — so Guard adds nothing measurable there. Guard's gain is concentrated where Spark *does* claim completion: injection (D, E), wrong-item completion (C4, C5), and cross-modal mismatch / replay (F1, F3, F4).
+
+## Live Meta verification (proven)
+
+**Live clients behind the existing interfaces.** Each client keeps the same interface the demo uses (`SparkClient.reason`, `SamClient.segment`, `VoiceClient.transcribe`) and calls the real Meta API:
+
+| Client | Model | Endpoint(s) |
+| :--- | :--- | :--- |
+| Muse Spark | `muse-spark-1.3` | `POST /v1/chat/completions` |
+| SAM 3.1 | `sam-3.1` | `POST /v1/files`, then `POST /v1/responses` |
+| Muse Voice Transcribe | `muse-voice-transcribe-1.0` | `POST /v1/asr/transcribe` |
+
+**Live probe.** `GET /api/meta/status?probe=1` returned `source: "live"`, `error: null` for all three clients.
+
+**End-to-end browser proof.** The **Live verification** section below the hero uploads a real photo with the agent's claimed object, runs live SAM 3.1 through `POST /api/guard/live-check`, and shows the Guard decision.
+
+![Live verification: red-mug photo claimed as red mug, SAM 3.1 LIVE verified true, Guard ALLOW](docs/screenshots/live-verification-allow.png)
+
+*Fig 1: Real red-mug photo, claim red mug — SAM 3.1 LIVE, verified: true — Guard ALLOW (Verified VERIFY_MUG).*
+
+![Live verification: desk photo claimed as red mug, SAM 3.1 LIVE verified false, Guard BLOCK](docs/screenshots/live-verification-block.png)
+
+*Fig 2: Desk photo (no mug) claimed as red mug — SAM 3.1 LIVE, verified: false — Guard BLOCK (Perception mismatch: missing red mug).*
+
+Reproduce with the input photos: [`docs/test-images/red-mug.png`](docs/test-images/red-mug.png) and [`docs/test-images/desk.png`](docs/test-images/desk.png).
+
+**The decision is still deterministic.** The Guard decision is always the unchanged `reconcile()` on a fresh ORDER-1042 ledger at step `VERIFY_MUG`. Live SAM only supplies whether the claimed object is in frame. Mock results fail closed: they are never shown as live verification and never count as verified. The clients fall back to mocks when `SAFELABS_USE_MOCKS=true`, when keys are missing, or when a live call fails.
+
+**Honest limits.**
+* Live SAM checks object presence only. It does not read text in the image (`imageText` is `""` when live), so the live check does not detect printed-sign injection.
+* SAM's placeholder box and score are not shown as real geometry or confidence.
+* The ASI-MM hero flow (PASS → attacked → BLOCKED) and the 64% → 0% benchmark still run on mock clients, as labelled.
+* The live Voice test is optional and requires a mono 16-bit PCM WAV at 16 or 24 kHz.
+
+### Appendix: Additional live checks
+
+![Live verification: red-mug photo claimed as laptop, SAM 3.1 LIVE verified false, Guard BLOCK](docs/screenshots/live-block-wrong-claim.png)
+
+*Red-mug photo claimed as laptop — SAM 3.1 LIVE, verified: false — Guard BLOCK.*
+
+![Live verification: desk photo claimed as desk, SAM 3.1 LIVE verified true, Guard BLOCK](docs/screenshots/live-block-desk-verified.png)
+
+*SAM correctly verified desk (verified: true), but Guard still BLOCKs because VERIFY_MUG expects a red mug. SAM verifies, the ledger decides.*
 
 ## Technical Design
 
@@ -167,7 +209,8 @@ safelabs-guard/
   app/                  # Next.js live PackProof demo
   components/           # LiveAgent, Ledger, GuardDecision, BenchmarkBar
   lib/guard/            # reconcile.ts, ledger.ts, injections.ts
-  lib/meta/             # spark.ts, sam.ts, voice.ts
+  lib/meta/             # spark.ts, sam.ts, voice.ts (live clients + mock fallback)
+  lib/live/             # Live verification bridge -> existing reconcile()
   lib/benchmark/        # Guarded vs. unguarded benchmark logic
   data/asi-mm/          # 30-case attack dataset
   scripts/              # Benchmark runner
