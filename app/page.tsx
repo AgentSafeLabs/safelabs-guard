@@ -1,6 +1,7 @@
 // Hero: live PackProof agent (PASS -> attacked -> BLOCKED).
 import BenchmarkBar from "@/components/BenchmarkBar";
 import LiveAgent from "@/components/LiveAgent";
+import LiveVerification from "@/components/LiveVerification";
 
 export default function Home() {
   return (
@@ -17,6 +18,8 @@ export default function Home() {
         </header>
 
         <LiveAgent />
+
+        <LiveVerification />
 
         <BenchmarkBar />
 
