@@ -1,4 +1,5 @@
 // Hero: live PackProof agent (PASS -> attacked -> BLOCKED).
+import BenchmarkBar from "@/components/BenchmarkBar";
 import LiveAgent from "@/components/LiveAgent";
 
 export default function Home() {
@@ -16,6 +17,8 @@ export default function Home() {
         </header>
 
         <LiveAgent />
+
+        <BenchmarkBar />
 
         <footer className="mt-12 border-t border-zinc-800 pt-4 text-xs text-zinc-500">
           Built by Safe Labs AI Inc. Demo runs on mock Meta perception clients; guard decisions are
