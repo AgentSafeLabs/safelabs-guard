@@ -121,7 +121,7 @@ The ledger state machine can only advance on ALLOW. Model outputs, image text, a
 ## Quick Start
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/safelabs-guard.git
+git clone https://github.com/AgentSafeLabs/safelabs-guard.git
 cd safelabs-guard
 npm install
 cp .env.example .env.local # Add your Meta / API keys
