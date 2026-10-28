@@ -1,4 +1,4 @@
-// Abuse limits for the agent routes.
+// Abuse limits for the billed routes (/api/agent/turn, /api/guard/live-check).
 //
 // BEST-EFFORT ONLY: all state lives in this process's memory, so each
 // serverless instance has its own window and its own daily budget, and both
@@ -66,11 +66,29 @@ export function isLiveDisabled(): boolean {
   return process.env.SAFELABS_LIVE_DISABLED === "true";
 }
 
-/** Client IP from proxy headers. Spoofable unless the platform overwrites them. */
+/** Seconds until the daily budget resets (next UTC midnight); at least 1. */
+export function secondsUntilBudgetReset(now: number = Date.now()): number {
+  const d = new Date(now);
+  const next = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1);
+  return Math.max(1, Math.ceil((next - now) / 1000));
+}
+
+/**
+ * Client IP from proxy headers, most trustworthy first:
+ *   1. x-vercel-forwarded-for: set by Vercel's edge, which overwrites any
+ *      value the client sent.
+ *   2. x-real-ip: set by the platform or reverse proxy (Vercel sets it too).
+ *   3. The LAST x-forwarded-for entry: each proxy appends the address it
+ *      received the request from, so the last entry was written by the proxy
+ *      nearest to us. Earlier entries are whatever the client put there, so
+ *      using the first one would let a caller pick a fresh IP per request and
+ *      dodge the per-IP limit.
+ * Still spoofable when the app runs with no proxy in front of it.
+ */
 export function clientIp(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  const first = forwarded?.split(",")[0]?.trim();
-  return first || request.headers.get("x-real-ip")?.trim() || "unknown";
+  const pick = (name: string) => request.headers.get(name)?.split(",")[0]?.trim();
+  const last = request.headers.get("x-forwarded-for")?.split(",").pop()?.trim();
+  return pick("x-vercel-forwarded-for") || pick("x-real-ip") || last || "unknown";
 }
 
 /** Tests only: clears all in-memory counters. */

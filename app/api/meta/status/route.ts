@@ -1,13 +1,18 @@
 // Server-only spike: reports whether Spark / SAM / Voice run live or mock.
 // GET /api/meta/status          -> configured mode per client (no API calls)
 // GET /api/meta/status?probe=1  -> also makes one tiny call per client and
-//                                   reports the source actually used + error.
-// Never returns keys, only whether each one is set.
+//                                   reports the source actually used + error,
+//                                   ONLY with header x-safelabs-admin equal to
+//                                   SAFELABS_ADMIN_TOKEN. Without it (or with the
+//                                   env unset) probe is ignored and no Meta call
+//                                   is made.
+// Never returns keys, values or prefixes, only whether each key is set.
 
 import { NextResponse } from "next/server";
-import { getSamClient } from "@/lib/meta/sam";
-import { getSparkClient } from "@/lib/meta/spark";
-import { getVoiceClient } from "@/lib/meta/voice";
+import { isAdminRequest } from "../../../../lib/server/admin";
+import { getSamClient } from "../../../../lib/meta/sam";
+import { getSparkClient } from "../../../../lib/meta/spark";
+import { getVoiceClient } from "../../../../lib/meta/voice";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -49,7 +54,7 @@ export async function GET(request: Request) {
     voice: { mode: voice.mode, keySet: Boolean(process.env.META_VOICE_API_KEY) },
   };
 
-  if (new URL(request.url).searchParams.get("probe") !== "1") {
+  if (new URL(request.url).searchParams.get("probe") !== "1" || !isAdminRequest(request)) {
     return NextResponse.json(status);
   }
 

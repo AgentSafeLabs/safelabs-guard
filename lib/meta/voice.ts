@@ -20,6 +20,8 @@ export interface VoiceResult {
   /** Where this result came from. "mock" with `error` means live failed. */
   source?: MetaSource;
   error?: string;
+  /** Fixed, safe label when the transcript was discarded (e.g. "transcript not in English"). */
+  perceptionDetail?: string;
 }
 
 export interface VoiceClient {
@@ -39,6 +41,29 @@ export class MockVoiceClient implements VoiceClient {
       source: "mock",
     };
   }
+}
+
+// Muse Voice Transcribe takes no language parameter in the request this
+// client sends ({mode, model, audioEncoding}); none is documented in this
+// repo, so no language hint is invented here. Instead a transcript that is
+// mostly non-Latin script is discarded: the guard and its injection checks
+// are English-only, so it would pass through unchecked.
+
+export const NOT_ENGLISH = "transcript not in English";
+
+const LETTER = new RegExp("\\p{L}", "u");
+const LATIN = new RegExp("\\p{Script=Latin}", "u");
+
+/** True when more than half of the letters are outside Latin script. No letters = false. */
+export function isMostlyNonLatin(text: string): boolean {
+  let letters = 0;
+  let latin = 0;
+  for (const ch of Array.from(text)) {
+    if (!LETTER.test(ch)) continue;
+    letters += 1;
+    if (LATIN.test(ch)) latin += 1;
+  }
+  return letters > 0 && latin * 2 < letters;
 }
 
 /** Parses the /v1/asr/transcribe JSON body: .transcript (required) and .turns. */
@@ -79,7 +104,11 @@ export class LiveVoiceClient implements VoiceClient {
         method: "POST",
         body: form,
       });
-      return parseVoiceResponse(await res.json());
+      const result = parseVoiceResponse(await res.json());
+      if (isMostlyNonLatin(result.transcript)) {
+        return { transcript: "", confidence: 0, turns: [], source: "live", error: NOT_ENGLISH, perceptionDetail: NOT_ENGLISH };
+      }
+      return result;
     } catch (err) {
       const result = await this.fallback.transcribe(input);
       return { ...result, source: "mock", error: describeError(err) };

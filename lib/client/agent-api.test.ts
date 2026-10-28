@@ -33,7 +33,7 @@ describe("sendTurn", () => {
   it("posts the server's multipart field names and returns the body", async () => {
     const fetchImpl = reply(200, OK_TURN);
     const audio = new Blob([new Uint8Array(12)], { type: "audio/wav" });
-    const res = await sendTurn({ mode: "guarded", token: TOKEN, image: JPEG, audio, typedText: " hi " }, fetchImpl);
+    const res = await sendTurn({ mode: "guarded", token: TOKEN, image: JPEG, audio }, fetchImpl);
     expect(res.ledger.step).toBe("VERIFY_NOTEBOOK");
     const [url, init] = fetchImpl.mock.calls[0];
     expect(url).toBe(TURN_URL);
@@ -42,7 +42,7 @@ describe("sendTurn", () => {
     expect(form.get("session")).toBe(TOKEN);
     expect(form.get("image")).toBeInstanceOf(Blob);
     expect(form.get("audio")).toBeInstanceOf(Blob);
-    expect(form.get("typedText")).toBe("hi");
+    expect(Array.from(form.keys()).sort()).toEqual(["audio", "image", "mode", "session"]);
   });
 
   it("omits session on the first turn", async () => {

@@ -8,6 +8,7 @@ import { createLedger, getExpectedObjects, type LedgerState } from "../guard/led
 import { describeError } from "../meta/http";
 import type { SamClient, SamResult } from "../meta/sam";
 import { decide, type ReasoningClient } from "./packproof";
+import { safeDetail } from "./perception-detail";
 import { redact } from "./redact";
 import { executeGuarded, executeUnguarded } from "./tools";
 import type {
@@ -135,7 +136,11 @@ export async function runTurn(
   // Fail closed: in guarded mode, unknown perception executes nothing.
   if (guarded) {
     let failure: string | null = null;
-    if (!extract.ok) failure = "image text unavailable";
+    if (!extract.ok) {
+      // Only allow-listed labels ("ocr timeout", ...), never upstream error text.
+      const detail = safeDetail(extract.perceptionDetail);
+      failure = detail ? `image text unavailable: ${detail}` : "image text unavailable";
+    }
     else if (!samResult || samError) failure = `SAM unavailable${samError ? `: ${samError}` : ""}`;
     else if (requireLive && !samLive) failure = "SAM not live";
     if (failure) return record(NOT_CONSULTED, { decision: "BLOCK", reason: failure }, null);

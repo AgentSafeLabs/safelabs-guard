@@ -4,8 +4,10 @@
 // Shapes follow lib/server/agent-turn.ts and lib/server/ship.ts. Tokens live
 // in memory only and never appear in errors or logs.
 
+import type { PerceptionDetail } from "../agent/perception-detail";
+import type { SecurityEvent } from "../agent/security-events";
 import type { AgentMode, TurnRecord } from "../agent/types";
-import type { SourceLabel } from "../server/agent-turn";
+import type { SourceLabel, SourceName } from "../server/agent-turn";
 import type { ShipmentRecord } from "../server/ship";
 
 export const TURN_URL = "/api/agent/turn";
@@ -23,6 +25,10 @@ export interface TurnResponse {
   ledger: { step: TurnRecord["step"]; stepIndex: number; status: "IN_PROGRESS" | "COMPLETE" };
   shipped: boolean;
   sources: { sam: SourceLabel; voice: SourceLabel; vision: SourceLabel; spark: SourceLabel };
+  /** Fixed, non-secret reason per unavailable source (e.g. "ocr timeout", "voice not sent"). */
+  perceptionDetail?: Partial<Record<SourceName, PerceptionDetail>>;
+  /** Injection attempts the guard detected (shadow: true in unguarded mode). Display only. */
+  securityEvents?: SecurityEvent[];
   /** Present only when the guard ALLOWed SHIP at the SHIP step. */
   approval?: string;
 }
@@ -144,11 +150,6 @@ export interface SendTurnInput {
   token: string | null;
   image: Blob | null;
   audio?: Blob | null;
-  /**
-   * Typed fallback for people without a mic. NOTE: the current server ignores
-   * this field (it never accepts a client transcript); see client-page-report.
-   */
-  typedText?: string;
 }
 
 export async function sendTurn(input: SendTurnInput, fetchImpl: typeof fetch = fetch): Promise<TurnResponse> {
@@ -157,7 +158,6 @@ export async function sendTurn(input: SendTurnInput, fetchImpl: typeof fetch = f
   if (input.token) form.append("session", input.token);
   if (input.image) form.append("image", input.image, "frame.jpg");
   if (input.audio) form.append("audio", input.audio, "clip.wav");
-  if (input.typedText?.trim()) form.append("typedText", input.typedText.trim().slice(0, 500));
 
   let res: Response;
   try {

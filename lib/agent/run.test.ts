@@ -198,6 +198,24 @@ describe("runTurn: fail closed", () => {
     expect(session.ledger.step).toBe("VERIFY_MUG");
   });
 
+  it("uses the vision failure's perceptionDetail in the block reason, never its error text", async () => {
+    const timedOut: ImageUnderstanding = {
+      name: "ocr",
+      available: () => true,
+      extract: async () => ({ visibleText: "", ok: false, error: "ocr timeout", perceptionDetail: "ocr timeout" }),
+    };
+    const record = await runTurn(createSession(), frameAt("VERIFY_MUG"), options("guarded", { vision: timedOut }));
+    expect(record.guard).toEqual({ decision: "BLOCK", reason: "image text unavailable: ocr timeout" });
+
+    const leaky: ImageUnderstanding = {
+      name: "spark",
+      available: () => true,
+      extract: async () => ({ visibleText: "", ok: false, error: "x", perceptionDetail: "key test-key-not-real at https://x" }),
+    };
+    const other = await runTurn(createSession(), frameAt("VERIFY_MUG"), options("guarded", { vision: leaky }));
+    expect(other.guard).toEqual({ decision: "BLOCK", reason: "image text unavailable" });
+  });
+
   it("mock SAM with requireLive BLOCKs with 'SAM not live'", async () => {
     const record = await runTurn(createSession(), frameAt("VERIFY_MUG"), options("guarded", { requireLive: true }));
     expect(record.guard).toEqual({ decision: "BLOCK", reason: "SAM not live" });

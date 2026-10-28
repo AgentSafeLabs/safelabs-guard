@@ -1,11 +1,12 @@
 "use client";
 
-// Browser client for the PackProof agent: camera frame + optional spoken
-// clip -> POST /api/agent/turn -> guard result; SHIP approval -> POST
-// /api/packproof/ship. The session token lives only in React state.
+// Browser client for the PackProof agent: camera frame (or an uploaded test
+// image) + optional spoken clip -> POST /api/agent/turn -> guard result; SHIP
+// approval -> POST /api/packproof/ship. The session token lives only in React
+// state. Uploaded and captured frames are sent identically.
 // All server text is rendered as React text nodes.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { STEPS } from "@/lib/guard/ledger";
 import {
   AgentApiError,
@@ -17,6 +18,8 @@ import {
   type TurnResponse,
 } from "@/lib/client/agent-api";
 import { captureFrame, startCamera, stopCamera } from "@/lib/client/camera";
+import { failClosedExplanation, imageTextLabel, injectionBanner, sourceBadgeText } from "@/lib/client/labels";
+import { checkUpload, UPLOAD_ACCEPT } from "@/lib/client/upload";
 import { discardRecording, startRecording, stopRecording } from "@/lib/client/mic";
 import { MAX_DURATION_SECONDS } from "@/lib/client/wav";
 import type { AgentMode } from "@/lib/agent/types";
@@ -29,6 +32,12 @@ interface HistoryEntry {
 }
 
 type SourceLabel = TurnResponse["sources"]["sam"];
+
+interface Frame {
+  blob: Blob;
+  url: string;
+  origin: "camera" | "uploaded";
+}
 
 const DECISION_STYLES: Record<string, string> = {
   ALLOW: "border-emerald-400 bg-emerald-600 text-white",
@@ -49,10 +58,13 @@ function messageOf(err: unknown): string {
   return "Something went wrong.";
 }
 
-function SourceBadge({ label, source }: { label: string; source: SourceLabel }) {
+function SourceBadge({ label, source, detail, notSent }: { label: string; source: SourceLabel; detail?: string; notSent?: boolean }) {
   return (
-    <span className={`rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase ${SOURCE_STYLES[source] ?? SOURCE_STYLES.unavailable}`}>
-      {label}: {source}
+    <span
+      className={`rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase ${notSent ? SOURCE_STYLES.unavailable : SOURCE_STYLES[source] ?? SOURCE_STYLES.unavailable}`}
+      title={detail}
+    >
+      {sourceBadgeText(label, source, { notSent })}
     </span>
   );
 }
@@ -94,9 +106,13 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 function TurnCard({ entry, prominent }: { entry: HistoryEntry; prominent: boolean }) {
-  const { turn, sources, ledger, shipped } = entry.response;
+  const { turn, sources, ledger, shipped, perceptionDetail = {}, securityEvents = [] } = entry.response;
   const decision = turn.guard?.decision ?? "UNGUARDED";
   const reason = turn.guard ? turn.guard.reason : "No guard: the agent acted on its own proposal.";
+  const banner = injectionBanner(securityEvents);
+  const explanation = failClosedExplanation(turn.guard);
+  const voiceNotSent = !entry.hadAudio || perceptionDetail.voice === "voice not sent";
+  const unavailable = Object.entries(perceptionDetail).filter(([name, detail]) => detail && !(name === "voice" && voiceNotSent));
   return (
     <article className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 sm:p-4">
       <header className="mb-2 flex flex-wrap items-center gap-2">
@@ -105,9 +121,22 @@ function TurnCard({ entry, prominent }: { entry: HistoryEntry; prominent: boolea
         </span>
         <span className="font-mono text-xs text-zinc-400">at {turn.step}</span>
       </header>
+      {banner && (
+        <div role="alert" className="mb-2 rounded-xl border-2 border-fuchsia-400 bg-fuchsia-950 px-3 py-2 text-sm font-bold text-fuchsia-100">
+          ⚠ {banner}
+          <ul className="mt-1 space-y-0.5 font-mono text-xs font-normal text-fuchsia-200">
+            {securityEvents.map((e, i) => (
+              <li key={i}>
+                {e.source}: &quot;{e.excerpt}&quot;
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className={`rounded-xl border-2 px-4 ${prominent ? "py-4" : "py-2"} text-center ${DECISION_STYLES[decision]}`}>
         <div className={`${prominent ? "text-4xl" : "text-xl"} font-black tracking-tight`}>{decision}</div>
         <p className="mt-1 text-sm font-semibold">{reason}</p>
+        {explanation && <p className="mt-1 text-sm">{explanation}</p>}
       </div>
       <div className="mt-3">
         <Field label="Proposed" value={turn.sparkDecision.proposedAction} />
@@ -120,17 +149,22 @@ function TurnCard({ entry, prominent }: { entry: HistoryEntry; prominent: boolea
           value={turn.perception.transcript ? `"${turn.perception.transcript}"` : entry.hadAudio ? "(no usable transcript)" : "(no audio sent)"}
         />
         <Field
-          label={`Image text (${turn.perception.imageTextSource})`}
+          label={imageTextLabel(sources.vision)}
           value={turn.perception.imageText ? `"${turn.perception.imageText}"` : "(none read)"}
         />
         <Field label="Ledger" value={`${ledger.step} · ${ledger.status}${shipped ? " · SHIPPED" : ""}`} />
       </div>
       <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Perception sources">
-        <SourceBadge label="SAM" source={sources.sam} />
-        <SourceBadge label="Vision" source={sources.vision} />
-        <SourceBadge label="Spark" source={sources.spark} />
-        <SourceBadge label="Voice" source={sources.voice} />
+        <SourceBadge label="SAM" source={sources.sam} detail={perceptionDetail.sam} />
+        <SourceBadge label="Image text" source={sources.vision} detail={perceptionDetail.vision} />
+        <SourceBadge label="Spark" source={sources.spark} detail={perceptionDetail.spark} />
+        <SourceBadge label="Voice" source={sources.voice} detail={perceptionDetail.voice} notSent={voiceNotSent} />
       </div>
+      {unavailable.length > 0 && (
+        <p className="mt-1 font-mono text-[11px] text-zinc-400">
+          Why unavailable: {unavailable.map(([name, detail]) => `${name}: ${detail}`).join(" · ")}
+        </p>
+      )}
     </article>
   );
 }
@@ -146,7 +180,7 @@ export default function PackProofClient() {
   const [session, setSession] = useState<ClientSession>(() => startSession("guarded"));
   const [cameraOn, setCameraOn] = useState(false);
   const [facing, setFacing] = useState<"environment" | "user">("environment");
-  const [frame, setFrame] = useState<{ blob: Blob; url: string } | null>(null);
+  const [frame, setFrame] = useState<Frame | null>(null);
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [clip, setClip] = useState<{ blob: Blob; url: string } | null>(null);
@@ -160,7 +194,7 @@ export default function PackProofClient() {
   const latest = history[0]?.response ?? null;
   const mode = session.mode;
 
-  const replaceFrame = useCallback((next: { blob: Blob; url: string } | null) => {
+  const replaceFrame = useCallback((next: Frame | null) => {
     setFrame((prev) => {
       if (prev) URL.revokeObjectURL(prev.url);
       return next;
@@ -233,11 +267,26 @@ export default function PackProofClient() {
     setError(null);
     try {
       const blob = await captureFrame(videoRef.current);
-      replaceFrame({ blob, url: URL.createObjectURL(blob) });
+      replaceFrame({ blob, url: URL.createObjectURL(blob), origin: "camera" });
       setStatus(`Frame captured (${Math.round(blob.size / 1024)} KB).`);
     } catch (err) {
       setError(messageOf(err));
     }
+  }
+
+  async function upload(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = ""; // picking the same file again still fires change
+    if (!file) return;
+    setError(null);
+    const check = await checkUpload(file);
+    if (!check.ok) {
+      setError(check.error);
+      return;
+    }
+    replaceFrame({ blob: file, url: URL.createObjectURL(file), origin: "uploaded" });
+    setStatus(`Test image loaded (${Math.round(file.size / 1024)} KB). It goes through the same checks as a camera frame.`);
   }
 
   const finishRecording = useCallback(async () => {
@@ -388,14 +437,28 @@ export default function PackProofClient() {
             <button type="button" onClick={capture} disabled={!cameraOn} className={`${button} bg-white text-zinc-950 hover:bg-zinc-200`}>
               {frame ? "Retake" : "Capture"}
             </button>
+            <label className={`${button} cursor-pointer border border-zinc-700 text-zinc-300 hover:bg-zinc-800 focus-within:ring-2 focus-within:ring-sky-400`}>
+              Use a test image instead of the camera
+              <input type="file" accept={UPLOAD_ACCEPT} onChange={upload} className="sr-only" />
+            </label>
           </div>
+          <p className="text-xs text-zinc-500">Test images: JPEG or PNG, up to 8 MB.</p>
 
           {frame && (
             <figure className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element -- local blob URL */}
-              <img src={frame.url} alt="Last captured frame" className="h-20 w-32 rounded-lg border border-zinc-700 object-cover" />
+              <img
+                src={frame.url}
+                alt={frame.origin === "uploaded" ? "Uploaded test image" : "Last captured frame"}
+                className="h-20 w-32 rounded-lg border border-zinc-700 object-cover"
+              />
               <figcaption className="text-xs text-zinc-400">
-                Captured frame · {Math.round(frame.blob.size / 1024)} KB JPEG
+                {frame.origin === "uploaded" ? (
+                  <span className="mr-1 rounded border border-sky-600 bg-sky-950 px-1 font-mono uppercase text-sky-200">uploaded</span>
+                ) : (
+                  "Captured frame · "
+                )}
+                {Math.round(frame.blob.size / 1024)} KB {frame.blob.type === "image/png" ? "PNG" : "JPEG"}
                 <button type="button" onClick={() => replaceFrame(null)} className="ml-2 underline hover:text-zinc-200">
                   Clear
                 </button>
@@ -440,7 +503,7 @@ export default function PackProofClient() {
           >
             {busy ? "Working…" : `Send turn (${mode})`}
           </button>
-          {!frame && <p className="text-xs text-zinc-500">Capture a frame first.</p>}
+          {!frame && <p className="text-xs text-zinc-500">Capture a frame or choose a test image first.</p>}
         </section>
 
         {/* Result */}
