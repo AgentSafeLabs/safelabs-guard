@@ -190,7 +190,7 @@ function blockedRecord(
       transcript: "",
     },
     sparkDecision: { claimedObjects: [], proposedAction: "HOLD", rationale: "not consulted: perception failed closed", usedImage: false },
-    perception: { samObjects: [], imageText: "", imageTextSource: "none", transcript: "" },
+    perception: { samObjects: [], agentSaw: [], imageText: "", imageTextSource: "none", transcript: "" },
     guard: { decision: "BLOCK", reason },
     executed: null,
     shipped,
@@ -322,7 +322,7 @@ export async function handleTurn(request: Request, deps: TurnDeps = DEFAULT_DEPS
     if (mode === "guarded" && audio && voiceSource === "unavailable") {
       record = blockedRecord(turnNumber, mode, step, observation, "voice unavailable", session.shipped);
     } else {
-      record = await runTurn(session, observation, { mode, sam, vision, reasoning, requireLive: !mockMode });
+      record = await runTurn(session, observation, { mode, sam, vision, reasoning, requireLive: !mockMode, concepts });
       record = { ...record, turn: turnNumber };
       if (record.sparkDecision.rationale.startsWith("reasoning unavailable")) {
         // decide() puts the upstream error text here; return only a fixed label.

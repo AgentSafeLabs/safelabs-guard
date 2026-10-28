@@ -6,7 +6,7 @@
 
 import type { PerceptionDetail } from "../agent/perception-detail";
 import type { SecurityEvent } from "../agent/security-events";
-import type { AgentMode, TurnRecord } from "../agent/types";
+import type { AgentMode, DetectedObject, TurnRecord } from "../agent/types";
 import type { SourceLabel, SourceName } from "../server/agent-turn";
 import type { ShipmentRecord } from "../server/ship";
 
@@ -143,6 +143,32 @@ function isTurnResponse(body: Record<string, unknown> | null): body is Record<st
     typeof sources === "object" && sources !== null &&
     (body.approval === undefined || typeof body.approval === "string")
   );
+}
+
+const MAX_AGENT_SAW = 20;
+
+/**
+ * The detected objects the server gave the agent this turn, checked for shape
+ * (an older or malformed reply gives []). Display only.
+ */
+export function agentSawOf(turn: TurnRecord): DetectedObject[] {
+  const raw: unknown = (turn.perception as { agentSaw?: unknown } | undefined)?.agentSaw;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(
+      (o): o is DetectedObject =>
+        typeof o === "object" && o !== null &&
+        typeof (o as DetectedObject).label === "string" &&
+        typeof (o as DetectedObject).confidence === "number" && Number.isFinite((o as DetectedObject).confidence),
+    )
+    .slice(0, MAX_AGENT_SAW)
+    .map(({ label, confidence }) => ({ label: label.slice(0, 40), confidence }));
+}
+
+/** "red mug 0.95, banana 0.61", or "(nothing)". */
+export function agentSawText(turn: TurnRecord): string {
+  const seen = agentSawOf(turn);
+  return seen.length ? seen.map((o) => `${o.label} ${o.confidence.toFixed(2)}`).join(", ") : "(nothing)";
 }
 
 export interface SendTurnInput {

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { AgentApiError, requestShip, scrub, sendTurn, startSession, SHIP_URL, TURN_URL } from "./agent-api";
+import type { TurnRecord } from "../agent/types";
+import { AgentApiError, agentSawOf, agentSawText, requestShip, scrub, sendTurn, startSession, SHIP_URL, TURN_URL } from "./agent-api";
 
 const TOKEN = "eyJ2IjoxLCJvcmRlcklkIjoiT1JERVItMTA0MiJ9.c2lnbmF0dXJlLW5vdC1yZWFsLXNpZ25hdHVyZS1ub3QtcmVhbA";
 const APPROVAL = "eyJ2IjoxLCJ0eXBlIjoiYXBwcm92YWwifQ.YXBwcm92YWwtc2lnbmF0dXJlLW5vdC1yZWFsLWFwcHJvdmFs";
@@ -138,5 +139,24 @@ describe("scrub", () => {
   it("removes given secrets and long token-like strings", () => {
     expect(scrub(`x ${TOKEN} y`)).toBe("x [token] y");
     expect(scrub("short reason")).toBe("short reason");
+  });
+});
+
+describe("agentSawOf / agentSawText", () => {
+  const turnWith = (agentSaw: unknown) => ({ perception: { agentSaw } }) as unknown as TurnRecord;
+
+  it("formats the detected objects given to the agent", () => {
+    const turn = turnWith([
+      { label: "red mug", confidence: 0.95 },
+      { label: "banana", confidence: 0.6 },
+    ]);
+    expect(agentSawText(turn)).toBe("red mug 0.95, banana 0.60");
+  });
+
+  it("is (nothing) for an empty, missing or malformed list", () => {
+    expect(agentSawText(turnWith([]))).toBe("(nothing)");
+    expect(agentSawText({} as TurnRecord)).toBe("(nothing)");
+    expect(agentSawText(turnWith("red mug"))).toBe("(nothing)");
+    expect(agentSawOf(turnWith([{ label: 1, confidence: 0.9 }, { label: "x", confidence: NaN }, null]))).toEqual([]);
   });
 });

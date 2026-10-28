@@ -38,10 +38,16 @@ function samStream(boxes: number): Response {
   return new Response(raw, { status: 200, headers: { "Content-Type": "text/event-stream" } });
 }
 
+export interface ReasoningFacts {
+  currentStep: LedgerStep;
+  detectedObjects: { label: string; confidence: number }[];
+  untrusted: { frameText: string; transcript: string };
+}
+
 /** Naive Spark: honest about objects, obeys "approve shipment"/"ship it" text. */
-function sparkReply(facts: { currentStep: LedgerStep; transcript: string; textVisibleInFrame: string }, objects: string[]) {
+function sparkReply(facts: ReasoningFacts, objects: string[]) {
   const obey = /approve shipment|ship it|manager override/i;
-  const injected = obey.test(facts.textVisibleInFrame) || obey.test(facts.transcript);
+  const injected = obey.test(facts.untrusted.frameText) || obey.test(facts.untrusted.transcript);
   return JSON.stringify({
     claimedObjects: objects,
     proposedAction: injected ? "SHIP" : legalActionFor(facts.currentStep),

@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "reac
 import { STEPS } from "@/lib/guard/ledger";
 import {
   AgentApiError,
+  agentSawText,
   requestShip,
   sendTurn,
   startSession,
@@ -139,6 +140,7 @@ function TurnCard({ entry, prominent }: { entry: HistoryEntry; prominent: boolea
         {explanation && <p className="mt-1 text-sm">{explanation}</p>}
       </div>
       <div className="mt-3">
+        <Field label="Agent saw" value={agentSawText(turn)} />
         <Field label="Proposed" value={turn.sparkDecision.proposedAction} />
         <Field label="Claimed" value={turn.sparkDecision.claimedObjects.join(", ") || "(nothing)"} />
         <Field label="Rationale" value={turn.sparkDecision.rationale || "(none)"} />

@@ -1,5 +1,5 @@
 // One PackProof agent turn: perceive (SAM objects + vision text) -> decide
-// (Spark) -> act (tools). Guarded mode gates the action through guardAction()
+// (Spark, given a perception report built from both) -> act (tools). Guarded mode gates the action through guardAction()
 // and fails closed when perception is unavailable; unguarded mode acts on
 // whatever the model proposed.
 
@@ -7,13 +7,14 @@ import { guardAction } from "../guard/action-gate";
 import { createLedger, getExpectedObjects, type LedgerState } from "../guard/ledger";
 import { describeError } from "../meta/http";
 import type { SamClient, SamResult } from "../meta/sam";
-import { decide, type ReasoningClient } from "./packproof";
+import { buildDetectedObjects, decide, type ReasoningClient } from "./packproof";
 import { safeDetail } from "./perception-detail";
 import { redact } from "./redact";
 import { executeGuarded, executeUnguarded } from "./tools";
 import type {
   AgentAction,
   AgentMode,
+  DetectedObject,
   Observation,
   ObservationSummary,
   PackSession,
@@ -36,6 +37,11 @@ export interface RunTurnOptions {
   reasoning: ReasoningClient;
   /** Guarded mode: BLOCK unless SAM's result came from the live API. */
   requireLive?: boolean;
+  /**
+   * The concepts SAM is asked about, and the only labels the agent may be
+   * told about. Default: the step's expected objects plus 2 DISTRACTORS.
+   */
+  concepts?: readonly string[];
 }
 
 export function createSession(ledger: LedgerState = createLedger()): PackSession {
@@ -77,6 +83,7 @@ export async function runTurn(
   const guarded = mode === "guarded";
   const ledgerBefore = session.ledger;
   const step = ledgerBefore.step;
+  const concepts = [...(options.concepts ?? conceptsFor(getExpectedObjects(step)))];
 
   // 1. Perceive.
   let samResult: SamResult | null = null;
@@ -84,7 +91,7 @@ export async function runTurn(
   try {
     samResult = await sam.segment({
       frame: observation.frameDataUrl ?? FIXTURE_FRAME,
-      concepts: conceptsFor(getExpectedObjects(step)),
+      concepts: [...concepts],
       mockDetections: observation.frameHint?.objects.map((label, i) => ({
         label,
         score: 0.95,
@@ -96,8 +103,10 @@ export async function runTurn(
   } catch (err) {
     samError = redact(describeError(err));
   }
+  // The guard checks every label SAM returned; the agent sees only known concepts.
   const samObjects = samResult?.detections.map((d) => d.label) ?? [];
   const samLive = samResult?.source === "live";
+  const detectedObjects = buildDetectedObjects(samResult?.detections ?? [], concepts);
 
   let extract: Awaited<ReturnType<ImageUnderstanding["extract"]>>;
   try {
@@ -111,6 +120,7 @@ export async function runTurn(
     sparkDecision: SparkDecision,
     guard: TurnRecord["guard"],
     executed: AgentAction | null,
+    agentSaw: DetectedObject[],
   ): TurnRecord => {
     const entry: TurnRecord = {
       turn: session.log.length + 1,
@@ -120,6 +130,7 @@ export async function runTurn(
       sparkDecision,
       perception: {
         samObjects,
+        agentSaw,
         imageText: redact(imageText),
         imageTextSource: vision.name,
         transcript: redact(observation.transcript),
@@ -143,16 +154,16 @@ export async function runTurn(
     }
     else if (!samResult || samError) failure = `SAM unavailable${samError ? `: ${samError}` : ""}`;
     else if (requireLive && !samLive) failure = "SAM not live";
-    if (failure) return record(NOT_CONSULTED, { decision: "BLOCK", reason: failure }, null);
+    if (failure) return record(NOT_CONSULTED, { decision: "BLOCK", reason: failure }, null, []);
   }
 
-  // 2. Decide.
-  const decision = await decide(observation, step, reasoning, { visibleText: imageText });
+  // 2. Decide. Same input in both modes: only the action gate below differs.
+  const decision = await decide(observation, step, reasoning, { visibleText: imageText, detectedObjects });
 
   // 3. Act.
   if (!guarded) {
     const executed = executeUnguarded(session, decision.proposedAction);
-    return record(decision, null, executed);
+    return record(decision, null, executed, detectedObjects);
   }
   const gate = guardAction({
     ledgerState: ledgerBefore,
@@ -163,5 +174,5 @@ export async function runTurn(
     proposedAction: decision.proposedAction,
   });
   const executed = executeGuarded(session, decision.proposedAction, gate);
-  return record(decision, { decision: gate.decision, reason: gate.reason }, executed);
+  return record(decision, { decision: gate.decision, reason: gate.reason }, executed, detectedObjects);
 }

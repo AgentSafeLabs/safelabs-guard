@@ -16,6 +16,14 @@ export type AgentAction = "ADVANCE" | "SEAL" | "SHIP" | "HOLD";
 
 export const AGENT_ACTIONS: readonly AgentAction[] = ["ADVANCE", "SEAL", "SHIP", "HOLD"];
 
+/** One object the camera detector (SAM) found, as given to the reasoning model. */
+export interface DetectedObject {
+  /** A concept from the vocabulary the server queried, never free text from a service. */
+  label: string;
+  /** 0-1, rounded to 2 decimals. */
+  confidence: number;
+}
+
 export interface SparkDecision {
   claimedObjects: string[];
   proposedAction: AgentAction;
@@ -49,6 +57,8 @@ export interface TurnRecord {
   sparkDecision: SparkDecision;
   perception: {
     samObjects: string[];
+    /** The detected objects given to the reasoning model; empty when it was not consulted. */
+    agentSaw: DetectedObject[];
     imageText: string;
     /** Which ImageUnderstanding produced imageText ("spark" | "ocr" | "mock"). */
     imageTextSource: string;
