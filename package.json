@@ -9,7 +9,13 @@
     "lint": "next lint",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "benchmark": "tsx scripts/run-benchmark.ts"
+    "benchmark": "tsx scripts/run-benchmark.ts",
+    "bench:replay": "SAFELABS_BENCH_MODE=replay tsx scripts/bench.ts",
+    "bench:record": "SAFELABS_BENCH_MODE=record tsx scripts/bench.ts",
+    "bench:live-plan": "tsx scripts/bench.ts --plan",
+    "bench:images": "tsx scripts/bench-make-images.ts",
+    "bench:audio": "bash scripts/bench-make-audio.sh",
+    "bench:scan": "tsx scripts/bench-scan-recordings.ts"
   },
   "dependencies": {
     "@tesseract.js-data/eng": "1.0.0",
@@ -25,6 +31,7 @@
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "postcss": "^8",
+    "sharp": "0.35.5",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.23.15",
     "typescript": "^5",

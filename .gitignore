@@ -23,3 +23,6 @@ coverage/
 .env*
 !.env.example
 docs/audit/
+
+# tier-2 benchmark: live-mode results are never committed
+bench/results/live.json
