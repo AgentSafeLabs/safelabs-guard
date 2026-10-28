@@ -62,6 +62,7 @@ describe("session tokens", () => {
     expect(verifySession(resign({ ...payload, shipped: "false" })).ok).toBe(false);
     expect(verifySession(resign({ ...payload, turn: -1 })).ok).toBe(false);
     expect(verifySession(resign({ ...payload, step: "DONE" }))).toEqual({ ok: false, reason: "unknown ledger step" });
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { jti: _jti, ...missing } = payload;
     expect(verifySession(resign(missing)).ok).toBe(false);
   });

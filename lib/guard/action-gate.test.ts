@@ -48,6 +48,7 @@ describe("guardAction", () => {
     for (let i = 0; i < STEPS.length; i++) {
       const gateInput = input({ ledgerState: stateAt(i) });
       const result = guardAction(gateInput);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { proposedAction: _ignored, ...reconcileInput } = gateInput;
       const expected = reconcile(reconcileInput);
       expect(result.decision).toBe("ALLOW");
