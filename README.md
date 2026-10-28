@@ -227,4 +227,4 @@ Safe Labs is building the runtime security layer for multimodal agents. If your 
 
 Apache License 2.0 - see [LICENSE](./LICENSE)
 
-Copyright 2025 Safe Labs AI Inc.
+Copyright 2026 Safe Labs AI Inc.
