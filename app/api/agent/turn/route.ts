@@ -10,6 +10,8 @@ import { assertSafeRuntime } from "../../../../lib/server/runtime-mode";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+// Cold OCR (worker start + traineddata load) plus live Meta calls.
+export const maxDuration = 30;
 
 export async function POST(request: Request): Promise<Response> {
   // Production refuses mock perception (see lib/server/runtime-mode.ts).

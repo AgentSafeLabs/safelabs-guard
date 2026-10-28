@@ -5,17 +5,25 @@
 // Usage:
 //   npx tsx scripts/agent-demo.ts
 //   npx tsx scripts/agent-demo.ts --probe-spark-image
+//   npx tsx scripts/agent-demo.ts --ocr-file <path>
 //
-// --probe-spark-image makes ONE live, billed Muse Spark call with a generated
-// 16x16 PNG to find out whether Spark accepts image_url content parts. Only
-// the user runs this flag, with SAFELABS_USE_MOCKS=false and
-// META_SPARK_API_KEY set in the environment. Tests never call it.
+// --probe-spark-image makes live, billed Muse Spark calls (one /chat/completions
+// call, then one /files upload and one /responses call) with a generated
+// high-contrast PNG reading "KIWI 7310", to find out whether Spark reads
+// image_url or input_image content parts. It prints the verdict and the first
+// 200 characters of each reply, never headers or keys. Only the user runs this
+// flag, with SAFELABS_USE_MOCKS=false and META_SPARK_API_KEY set in the
+// environment; otherwise it makes no call. Tests never call it.
+//
+// --ocr-file runs the server OCR client (tesseract.js, local traineddata, no
+// network) on a local PNG/JPEG/WebP and prints text, confidence and elapsed ms.
 
 import { MockSamClient } from "../lib/meta/sam";
 import { createSession, runTurn } from "../lib/agent/run";
 import { naiveSpark, SCENARIOS } from "../lib/agent/scenarios";
 import type { AgentMode, TurnRecord } from "../lib/agent/types";
-import { MockVisionClient, probeSparkImageSupport } from "../lib/agent/vision";
+import { readFile } from "node:fs/promises";
+import { MockVisionClient, OcrVisionClient, probeSparkImageSupport } from "../lib/agent/vision";
 
 function pad(text: string, width: number): string {
   return text.length > width ? `${text.slice(0, width - 1)}…` : text.padEnd(width);
@@ -61,9 +69,43 @@ async function demo(): Promise<void> {
   }
 }
 
+const MIME_BY_EXT: Record<string, string> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp" };
+
+/** Two runs on one client: the first includes worker start-up (cold), the second reuses it (warm). */
+async function ocrFile(path: string): Promise<void> {
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  const mime = MIME_BY_EXT[ext] ?? "application/octet-stream";
+  const frameDataUrl = `data:${mime};base64,${(await readFile(path)).toString("base64")}`;
+  const ocr = new OcrVisionClient();
+  try {
+    for (const run of ["cold", "warm"]) {
+      const started = performance.now();
+      const result = await ocr.extract({ frameDataUrl, transcript: "" });
+      const elapsed = Math.round(performance.now() - started);
+      console.log(
+        result.ok
+          ? `${run}: ${elapsed} ms, confidence ${result.confidence}, text ${JSON.stringify(result.visibleText)}`
+          : `${run}: ${elapsed} ms, failed: ${result.perceptionDetail}`,
+      );
+    }
+  } finally {
+    await ocr.close();
+  }
+}
+
 async function main(): Promise<void> {
   if (process.argv.includes("--probe-spark-image")) {
-    console.log(`Spark image support: ${await probeSparkImageSupport()}`);
+    for (const { part, verdict, reply } of await probeSparkImageSupport()) {
+      console.log(`Spark ${part}: ${verdict}`);
+      if (reply) console.log(`  reply (first 200 chars): ${JSON.stringify(reply)}`);
+    }
+    return;
+  }
+  const ocrIndex = process.argv.indexOf("--ocr-file");
+  if (ocrIndex !== -1) {
+    const path = process.argv[ocrIndex + 1];
+    if (!path) throw new Error("--ocr-file needs a path");
+    await ocrFile(path);
     return;
   }
   await demo();
