@@ -36,10 +36,10 @@ function stubMeta({ boxes = 1, samStatus = 200, transcript = "confirmed", voiceS
 function request(fields: { image?: Uint8Array | null; imageType?: string; claim?: string; audio?: Uint8Array }) {
   const form = new FormData();
   if (fields.image !== null) {
-    form.append("image", new File([fields.image ?? PNG], "photo.png", { type: fields.imageType ?? "image/png" }));
+    form.append("image", new File([Buffer.from(fields.image ?? PNG)], "photo.png", { type: fields.imageType ?? "image/png" }));
   }
   if (fields.claim !== undefined) form.append("claimedObject", fields.claim);
-  if (fields.audio) form.append("audio", new File([fields.audio], "voice.wav", { type: "audio/wav" }));
+  if (fields.audio) form.append("audio", new File([Buffer.from(fields.audio)], "voice.wav", { type: "audio/wav" }));
   return new Request("http://localhost/api/guard/live-check", { method: "POST", body: form });
 }
 

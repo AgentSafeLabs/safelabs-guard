@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advance, createLedger, STEPS, type LedgerState, type LedgerStep } from "../../lib/guard/ledger";
+import { createLedgerAtStep, STEPS, type LedgerState, type LedgerStep } from "../../lib/guard/ledger";
 import { reconcile } from "../../lib/guard/reconcile";
 import cases from "./cases.json";
 
@@ -24,9 +24,7 @@ function stateAtStep(step: string): LedgerState {
   if (!(STEPS as readonly string[]).includes(step)) {
     throw new Error(`Unknown ledger step: ${step}`);
   }
-  let state = createLedger();
-  while (state.step !== (step as LedgerStep)) state = advance(state);
-  return state;
+  return createLedgerAtStep(step as LedgerStep);
 }
 
 describe("ASI-MM dataset", () => {

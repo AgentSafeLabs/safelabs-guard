@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { guardAction, legalActionFor, type ActionGateInput } from "./action-gate";
-import { advance, createLedger, getExpectedObjects, isLedgerState, STEPS, type LedgerState } from "./ledger";
+import { createLedger, createLedgerAtStep, getExpectedObjects, isLedgerState, STEPS, type LedgerState } from "./ledger";
 import { reconcile } from "./reconcile";
 
 function stateAt(stepIndex: number): LedgerState {
-  let state = createLedger();
-  for (let i = 0; i < stepIndex; i++) state = advance(state);
-  return state;
+  return createLedgerAtStep(STEPS[stepIndex]);
 }
 
 function input(overrides: Partial<ActionGateInput> = {}): ActionGateInput {

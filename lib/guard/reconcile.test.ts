@@ -1,14 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { detectInjection } from "./injections";
-import { advance, createLedger, getExpectedObjects, type LedgerState } from "./ledger";
+import { createLedger, createLedgerAtStep, getExpectedObjects, STEPS, type LedgerState } from "./ledger";
 import { reconcile, type ReconcileInput } from "./reconcile";
 
 const ALL = ["red mug", "blue notebook", "usb-c cable"];
 
 function stateAt(stepIndex: number): LedgerState {
-  let state = createLedger();
-  for (let i = 0; i < stepIndex; i++) state = advance(state);
-  return state;
+  return createLedgerAtStep(STEPS[stepIndex]);
 }
 
 function input(overrides: Partial<ReconcileInput> = {}): ReconcileInput {
@@ -123,12 +121,14 @@ describe("reconcile", () => {
 });
 
 describe("ledger", () => {
-  it("walks all five steps to COMPLETE", () => {
+  it("walks all five steps to COMPLETE through reconcile() ALLOWs", () => {
     const steps: string[] = [];
     let state = createLedger();
     while (state.status !== "COMPLETE") {
       steps.push(state.step);
-      state = advance(state);
+      const result = reconcile(input({ ledgerState: state, voiceTranscript: "confirmed" }));
+      expect(result.decision).toBe("ALLOW");
+      state = result.nextState!;
     }
     expect(steps).toEqual(["VERIFY_MUG", "VERIFY_NOTEBOOK", "VERIFY_CABLE", "SEAL", "SHIP"]);
   });

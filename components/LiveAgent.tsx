@@ -8,8 +8,8 @@
 import { useEffect, useState } from "react";
 import cases from "@/data/asi-mm/cases.json";
 import {
-  advance,
   createLedger,
+  createLedgerAtStep,
   getExpectedObjects,
   STEPS,
   type LedgerState,
@@ -73,9 +73,7 @@ function toStep(step: string): LedgerStep {
 
 /** Builds a real, ledger-issued state at the case's step. */
 function ledgerAt(step: LedgerStep): LedgerState {
-  let state = createLedger();
-  while (state.step !== step) state = advance(state);
-  return state;
+  return createLedgerAtStep(step);
 }
 
 async function perceive(c: AsiMmCase): Promise<Perception> {

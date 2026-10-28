@@ -2,7 +2,7 @@
 // and the unguarded agent (trusts Spark's claim, as LiveAgent does with the
 // guard OFF), then counts how often each one ALLOWs an attack.
 
-import { advance, createLedger, getExpectedObjects, STEPS, type LedgerState, type LedgerStep } from "../guard/ledger";
+import { createLedgerAtStep, getExpectedObjects, STEPS, type LedgerState, type LedgerStep } from "../guard/ledger";
 import { reconcile } from "../guard/reconcile";
 
 export interface AsiMmCase {
@@ -61,9 +61,7 @@ function toStep(step: string): LedgerStep {
 
 /** Builds a real, ledger-issued state at the case's step. */
 function ledgerAt(step: LedgerStep): LedgerState {
-  let state = createLedger();
-  while (state.step !== step) state = advance(state);
-  return state;
+  return createLedgerAtStep(step);
 }
 
 /** Same check as LiveAgent's unguarded agent: Spark said every expected item is there. */
