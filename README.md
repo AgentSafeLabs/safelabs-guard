@@ -6,7 +6,7 @@
 
 Built for the Meta AI Developer Hackathon by **Safe Labs AI Inc.** (Oct 26 - Nov 4)
 
-3-Minute Demo Video: _TODO — link not yet published_ | Live Demo: _TODO — Vercel deploy pending_ | [Benchmark Results](#benchmark) | [Live Meta verification (proven)](#live-meta-verification-proven)
+3-Minute Demo Video: _TODO — link not yet published_ | Live Demo: https://guard.agentsafelabs.com | [Benchmark Results](#benchmark) | [Live Meta verification (proven)](#live-meta-verification-proven)
 
 ---
 
