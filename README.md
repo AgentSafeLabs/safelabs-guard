@@ -166,6 +166,33 @@ Reproduce with the input photos: [`docs/test-images/red-mug.png`](docs/test-imag
 
 *SAM correctly verified desk (verified: true), but Guard still BLOCKs because VERIFY_MUG expects a red mug. SAM verifies, the ledger decides.*
 
+## PackProof agent (`/packproof`)
+
+A second page, separate from the hero, runs the PackProof agent as a real loop: each turn it **perceives** (SAM 3.1 objects, text read from the frame, Voice transcript), **decides** (Muse Spark proposes ADVANCE / SEAL / SHIP / HOLD) and **acts**. In **Guarded** mode, every proposed action goes through `guardAction()`, which allows only the one action legal at the current ledger step and then calls the unchanged `reconcile()`. In **Unguarded** mode the agent executes whatever it proposes. A SHIP that the guard ALLOWs returns a short-lived signed approval, and only that approval can create the (simulated) shipment.
+
+* **Fail closed.** If image text, SAM or Voice is unavailable, a guarded turn BLOCKs and executes nothing.
+* **Server-derived state.** The client sends only a mode, a signed session token and media. Perception, transcript and ledger position are derived on the server.
+* **Production refuses mock perception.** `/api/agent/turn` and `/api/packproof/ship` return 503 in production unless `SAFELABS_USE_MOCKS=false`.
+* **Typed text is not accepted.** Only transcripts produced from recorded audio are used.
+
+| Piece | Built | Verified in a real browser | Verified against live Meta |
+| :--- | :--- | :--- | :--- |
+| Agent loop (perceive, decide, act) with action gate | yes, unit tests on fakes | not yet | not yet |
+| Guarded vs unguarded outcome on sign / spoken injection | yes, unit and route tests on stubbed Meta | not yet | not yet |
+| Signed session tokens and SHIP approvals | yes, unit tests | not yet | not yet |
+| Simulated idempotent shipment (`/api/packproof/ship`) | yes, route tests | not yet | not yet |
+| Rate limit, daily live-call cap, kill switch (in-memory, per instance) | yes, unit tests | not yet | not yet |
+| Production refusal of mock mode | yes, unit tests | not yet | not yet |
+| Camera capture to JPEG (`/packproof`) | yes, sizing logic unit-tested | not yet | not yet |
+| Microphone to 16 kHz mono WAV | yes, encoder unit-tested | not yet | not yet |
+| Reading sign text from the frame via Muse Spark image input | yes, behind `SAFELABS_VISION=spark`; image input support unconfirmed | not yet | not yet |
+| OCR fallback (tesseract.js) | adapter only; package not installed | not yet | not yet |
+
+**Honest limits.**
+* Tokens are stateless: a session token can be replayed for up to 30 minutes and an approval for 5 minutes.
+* Rate limits, the daily cap and shipments live in memory per server instance.
+* Explicit mock mode (`SAFELABS_USE_MOCKS=true`) assumes every frame shows the expected items. It is for local demos only.
+
 ## Technical Design
 
 Guard is **deterministic code, not a safety prompt**. Core logic in `lib/guard/reconcile.ts`:
