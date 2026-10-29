@@ -44,6 +44,42 @@ export interface SamClient {
 export const SAM_MODEL = "sam-3.1";
 const BOX_RECORD = "<|box;";
 
+/**
+ * Text sent to SAM when it differs from our label. The label (and so the
+ * displayed item name, the ledger and every detection) is unchanged; only the
+ * prompt on the wire is. Applies to every caller of LiveSamClient.
+ * CONFIRM the value against docs/audit/sam-diagnosis.md before merging.
+ */
+export const SAM_PROMPT_ALIASES: Readonly<Record<string, string>> = {
+  "usb-c cable": "usb cable",
+};
+
+export function samPrompt(concept: string): string {
+  return SAM_PROMPT_ALIASES[concept] ?? concept;
+}
+
+const RETRY_DELAY_MS = 400;
+
+/** 429, 5xx, timeouts, network errors and truncated streams are worth one more try. */
+function isTransient(err: unknown): boolean {
+  if (err instanceof MetaApiError) {
+    if (err.status !== undefined) return err.status === 429 || err.status >= 500;
+    return err.message.startsWith("SAM parse failure: stream ended");
+  }
+  return err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError" || err.name === "TypeError");
+}
+
+/** One bounded retry. A second failure is thrown, so the caller still fails closed. */
+async function withRetry<T>(attempt: () => Promise<T>): Promise<T> {
+  try {
+    return await attempt();
+  } catch (err) {
+    if (!isTransient(err)) throw err;
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    return attempt();
+  }
+}
+
 export class MockSamClient implements SamClient {
   readonly mode = "mock" as const;
 
@@ -140,10 +176,10 @@ export class LiveSamClient implements SamClient {
 
   async segment(input: SamInput): Promise<SamResult> {
     try {
-      const fileId = await this.upload(input.frame);
+      const fileId = await withRetry(() => this.upload(input.frame));
       const detections: SamDetection[] = [];
       for (const concept of input.concepts) {
-        if (await this.verifyConcept(concept, fileId)) {
+        if (await withRetry(() => this.verifyConcept(concept, fileId))) {
           // Verification only: >=1 box record means the concept is in frame.
           // Masks/boxes are not decoded or rendered.
           detections.push({ label: concept, score: 1, box: [0, 0, 0, 0] });
@@ -182,7 +218,7 @@ export class LiveSamClient implements SamClient {
           {
             role: "user",
             content: [
-              { type: "input_text", text: concept },
+              { type: "input_text", text: samPrompt(concept) },
               { type: "input_image", file_id: fileId },
             ],
           },

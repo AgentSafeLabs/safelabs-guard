@@ -10,8 +10,9 @@ import { assertSafeRuntime } from "../../../../lib/server/runtime-mode";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-// Cold OCR (worker start + traineddata load) plus live Meta calls.
-export const maxDuration = 30;
+// Cold OCR (worker start + traineddata load) plus live Meta calls. Each SAM
+// call may retry once (2 x 10 s timeout, upload then response), so 30 s is not enough.
+export const maxDuration = 60;
 
 export async function POST(request: Request): Promise<Response> {
   // Production refuses mock perception (see lib/server/runtime-mode.ts).

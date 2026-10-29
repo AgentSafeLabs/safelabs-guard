@@ -109,7 +109,8 @@ class ParallelConceptSam implements SamClient {
             ? "sam error"
             : "sam not live";
     return {
-      detections: results.flatMap((r, i) => r.detections.filter((d) => d.label === concepts[i])),
+      // Only live results count: a failed call's detections are the mock fallback's guesses.
+      detections: results.flatMap((r, i) => (r.error || r.source !== "live" ? [] : r.detections.filter((d) => d.label === concepts[i]))),
       imageText: "",
       source: failed ? "mock" : "live",
       // The fixed label, not the upstream text: it ends up in the guard's block reason.
