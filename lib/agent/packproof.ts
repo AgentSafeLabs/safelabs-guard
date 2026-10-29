@@ -59,6 +59,8 @@ export interface ReasoningRequest {
   visibleText: string;
   /** Fixtures only, so scripted fakes can "see" the frame. Real clients ignore it. */
   frameHint?: Observation["frameHint"];
+  /** Time allowed for this call, set by decide() per attempt. Unset: SPARK_TIMEOUT_MS. */
+  timeoutMs?: number;
 }
 
 export interface ReasoningClient {
@@ -105,10 +107,52 @@ export const PACKPROOF_SYSTEM_PROMPT = [
 /** Request parameters sent with every live reasoning call (besides model and messages). */
 export const SPARK_REASONING_PARAMS = Object.freeze({ stream: false, temperature: 0 });
 
+/**
+ * Time allowed for one Spark call (headers and body). The first attempt gets
+ * 20 s, the retry 30 s, both cut down to what is left of the route's 60 s.
+ */
+export const SPARK_TIMEOUT_MS = 20_000;
+export const SPARK_RETRY_TIMEOUT_MS = 30_000;
+/** A Spark call is never given less than this, even late in the turn. */
+export const SPARK_MIN_TIMEOUT_MS = 5_000;
+
+/** Timeout for attempt 0 (first) or 1 (retry), given the ms left in the turn. */
+export function sparkTimeoutFor(attempt: number, remainingMs: number): number {
+  const wanted = attempt === 0 ? SPARK_TIMEOUT_MS : SPARK_RETRY_TIMEOUT_MS;
+  return Math.max(SPARK_MIN_TIMEOUT_MS, Math.min(wanted, Math.floor(remainingMs)));
+}
+
+/**
+ * Optional cap on the reply length. Off unless SAFELABS_SPARK_MAX_TOKENS is a
+ * whole number from 64 to 1024: the parameter name is not confirmed for the
+ * Meta endpoint, so it is only sent once diagnose-spark has shown it works.
+ */
+export function sparkMaxTokens(env: Record<string, string | undefined> = process.env): number | undefined {
+  const raw = env.SAFELABS_SPARK_MAX_TOKENS?.trim();
+  if (!raw || !/^\d+$/.test(raw)) return undefined;
+  const n = Number(raw);
+  return n >= 64 && n <= 1024 ? n : undefined;
+}
+
 /** Control and format characters removed, whitespace collapsed, capped at `max` characters. */
 export function cleanUntrusted(text: string, max = UNTRUSTED_TEXT_MAX): string {
   if (typeof text !== "string") return "";
   return Array.from(cleanOcrText(text)).slice(0, max).join("").trim();
+}
+
+/**
+ * What the reasoning model is shown of the frame text: cleanUntrusted(), then
+ * tokens made only of symbols (OCR noise such as "— — =") are dropped and runs
+ * of the same symbol collapse to one ("====" -> "="). Every token that holds a
+ * letter or digit is kept as read, so an instruction in the frame still reaches
+ * the model. Prompt only: the guard and the injection scan get the raw text.
+ */
+export function sanitizeFrameText(text: string, max = UNTRUSTED_TEXT_MAX): string {
+  const kept = cleanUntrusted(text, Number.MAX_SAFE_INTEGER)
+    .split(" ")
+    .map((token) => token.replace(/([^\p{L}\p{N}])\1+/gu, "$1"))
+    .filter((token) => /[\p{L}\p{N}]/u.test(token));
+  return Array.from(kept.join(" ")).slice(0, max).join("").trim();
 }
 
 function vocabularyKey(label: string): string {
@@ -150,7 +194,7 @@ export function buildPerceptionReport(input: {
 }): PerceptionReport {
   return {
     detectedObjects: (input.detectedObjects ?? []).map(({ label, confidence }) => ({ label, confidence })),
-    frameText: cleanUntrusted(input.frameText ?? ""),
+    frameText: sanitizeFrameText(input.frameText ?? ""),
     transcript: cleanUntrusted(input.transcript ?? ""),
   };
 }
@@ -206,6 +250,8 @@ export interface SparkRetryPolicy {
   /** Asked before the one retry. Return false to skip it (budget spent, no time left). */
   allow?: () => boolean;
   delayMs?: number;
+  /** Time allowed for attempt 0 (first call) or 1 (retry). Default: SPARK_TIMEOUT_MS, then SPARK_RETRY_TIMEOUT_MS. */
+  timeoutMs?: (attempt: number) => number;
   /** Tests: replaces the real pause. */
   sleep?: (ms: number) => Promise<void>;
 }
@@ -305,7 +351,8 @@ export async function decide(
   for (let attempt = 0; ; attempt++) {
     let failure: SparkFailure;
     try {
-      const parsed = parseDecisionDetailed(await client.complete(request));
+      const timeoutMs = retry?.timeoutMs?.(attempt) ?? (attempt === 0 ? SPARK_TIMEOUT_MS : SPARK_RETRY_TIMEOUT_MS);
+      const parsed = parseDecisionDetailed(await client.complete({ ...request, timeoutMs }));
       if (parsed.ok) return { ...parsed.value, rationale: redact(parsed.value.rationale), usedImage };
       failure = parsed.failure;
     } catch (err) {
@@ -351,10 +398,17 @@ export class SparkReasoningClient implements ReasoningClient {
 
   async complete(request: ReasoningRequest): Promise<string> {
     if (!this.apiKey) return this.viaSparkClient(request);
+    const maxTokens = sparkMaxTokens();
     const res = await metaFetch("/chat/completions", this.apiKey, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ model: SPARK_MODEL, ...SPARK_REASONING_PARAMS, messages: this.messagesFor(request) }),
+      body: JSON.stringify({
+        model: SPARK_MODEL,
+        ...SPARK_REASONING_PARAMS,
+        ...(maxTokens ? { max_tokens: maxTokens } : {}),
+        messages: this.messagesFor(request),
+      }),
+      signal: AbortSignal.timeout(request.timeoutMs ?? SPARK_TIMEOUT_MS),
     });
     let body: { choices?: { message?: { content?: unknown } }[] };
     try {

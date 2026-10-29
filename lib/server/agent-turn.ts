@@ -19,7 +19,7 @@ import { getVoiceClient, MockVoiceClient } from "../meta/voice";
 import { isShipAllowance, signApproval } from "../agent/approval";
 import { isTimeout, safeDetail, type PerceptionDetail } from "../agent/perception-detail";
 import { scanForInjection, type ScanInput, type SecurityEvent } from "../agent/security-events";
-import { getReasoningClient, sparkFailureDetail, SparkReasoningClient, type SparkRetryPolicy } from "../agent/packproof";
+import { getReasoningClient, sparkFailureDetail, SparkReasoningClient, sparkTimeoutFor, type SparkRetryPolicy } from "../agent/packproof";
 import { redact } from "../agent/redact";
 import { runTurn } from "../agent/run";
 import { freshSessionState, sessionFromState, signSession, verifySession, type SessionState } from "../agent/session-token";
@@ -33,6 +33,9 @@ export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 export const ROUTE_DISTRACTORS = ["banana", "laptop"] as const;
 /** No Spark retry once a turn has run this long: the route's maxDuration is 60 s. */
 export const SPARK_RETRY_DEADLINE_MS = 35_000;
+/** The route's maxDuration, and the part of it kept back for building the response. */
+export const TURN_BUDGET_MS = 60_000;
+export const TURN_RESERVE_MS = 4_000;
 
 export type SourceLabel = "live" | "mock" | "unavailable";
 export type SourceName = "sam" | "vision" | "voice" | "spark";
@@ -331,7 +334,11 @@ export async function handleTurn(request: Request, deps: TurnDeps = DEFAULT_DEPS
       // unit of the daily budget, and is skipped late in the turn or when the
       // budget is gone: the turn then fails closed (HOLD) as before.
       const sparkRetry: SparkRetryPolicy | undefined = sparkLive
-        ? { allow: () => Date.now() - startedAt < SPARK_RETRY_DEADLINE_MS && consumeLiveBudget(1) }
+        ? {
+            allow: () => Date.now() - startedAt < SPARK_RETRY_DEADLINE_MS && consumeLiveBudget(1),
+            // Longer second try, and neither call may outlive the route's maxDuration.
+            timeoutMs: (attempt) => sparkTimeoutFor(attempt, TURN_BUDGET_MS - TURN_RESERVE_MS - (Date.now() - startedAt)),
+          }
         : undefined;
       record = await runTurn(session, observation, {
         mode,
