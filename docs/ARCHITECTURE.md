@@ -67,7 +67,7 @@ Each of `spark.ts`, `sam.ts` and `voice.ts` exports a small interface (`SparkCli
 * Mocks accept the case data (`mockClaim`, `mockDetections`, `mockImageText`, `mockTranscript`) so the live demo and benchmark replay ASI-MM cases exactly.
 * Live clients implement the same interface and call the Meta APIs. A failed live call is reported as unavailable (no detections, no transcript); it is never replaced by mock output. Because Guard only consumes the interface output, swapping mock for live does not change `reconcile()` or the ledger.
 
-The hero scenarios (`components/LiveAgent.tsx`) and the benchmark replay run on the mocks. The `/packproof` page uses real camera and microphone input.
+The `/scenarios` page (`components/LiveAgent.tsx`) and the benchmark replay run on the mocks. The `/packproof` page uses real camera and microphone input.
 
 ## Benchmark
 

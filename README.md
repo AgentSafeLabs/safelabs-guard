@@ -6,7 +6,7 @@
 
 Built for the Meta AI Developer Hackathon by **Safe Labs AI Inc.** (Oct 26 - Nov 4)
 
-3-Minute Demo Video: _TODO — link not yet published_ | Live Demo: https://guard.agentsafelabs.com | [Benchmark Results](#benchmark) | [Live Meta verification (proven)](#live-meta-verification-proven)
+3-Minute Demo Video: _TODO — link not yet published_ | Live agent: https://guard.agentsafelabs.com/packproof | Scenarios (mock perception): https://guard.agentsafelabs.com/scenarios | [Benchmark Results](#benchmark) | [Live Meta verification (proven)](#live-meta-verification-proven)
 
 ---
 
@@ -114,7 +114,7 @@ Run it yourself: `npm run benchmark`
 
 ![ASI-MM benchmark: unguarded 64% attack success drops to 0% with Safelabs Guard](docs/assets/04-benchmark-results.png)
 
-*Benchmark bar from the PackProof demo (ASI-MM cases run on mock perception clients; live Meta proof is in the Live Meta verification section below). Run `npm run benchmark` to reproduce.*
+*Benchmark bar from the `/scenarios` page (ASI-MM cases run on mock perception clients; live Meta proof is in the Live Meta verification section below). Run `npm run benchmark` to reproduce.*
 
 **Methodology.**
 * **Unguarded** trusts Spark's claim only: if Muse Spark says every expected item for the current step is in the box, the agent ALLOWs; otherwise it HOLDs.
@@ -136,7 +136,7 @@ Run it yourself: `npm run benchmark`
 
 **Live probe.** `GET /api/meta/status?probe=1` returned `source: "live"`, `error: null` for all three clients.
 
-**End-to-end browser proof.** The **Live verification** section below the hero uploads a real photo with the agent's claimed object, runs live SAM 3.1 through `POST /api/guard/live-check`, and shows the Guard decision.
+**End-to-end browser proof.** The **Live verification** section on the `/scenarios` page uploads a real photo with the agent's claimed object, runs live SAM 3.1 through `POST /api/guard/live-check`, and shows the Guard decision.
 
 ![Live verification: red-mug photo claimed as red mug, SAM 3.1 LIVE verified true, Guard ALLOW](docs/screenshots/live-verification-allow.png)
 
@@ -153,7 +153,7 @@ Reproduce with the input photos: [`docs/test-images/red-mug.png`](docs/test-imag
 **Honest limits.**
 * Live SAM checks object presence only. It does not read text in the image (`imageText` is `""` when live), so the live check does not detect printed-sign injection.
 * SAM's placeholder box and score are not shown as real geometry or confidence.
-* The ASI-MM hero flow (PASS → attacked → BLOCKED) and the 64% → 0% benchmark still run on mock clients, as labelled.
+* The ASI-MM scenario flow on `/scenarios` (PASS → attacked → BLOCKED) and the 64% → 0% benchmark still run on mock clients, as labelled.
 * The live Voice test is optional and requires a mono 16-bit PCM WAV at 16 or 24 kHz.
 
 ### Appendix: Additional live checks
@@ -168,7 +168,7 @@ Reproduce with the input photos: [`docs/test-images/red-mug.png`](docs/test-imag
 
 ## PackProof agent (`/packproof`)
 
-A second page, separate from the hero, runs the PackProof agent as a real loop: each turn it **perceives** (SAM 3.1 objects, text read from the frame, Voice transcript), **decides** (Muse Spark proposes ADVANCE / SEAL / SHIP / HOLD) and **acts**. In **Guarded** mode, every proposed action goes through `guardAction()`, which allows only the one action legal at the current ledger step and then calls the unchanged `reconcile()`. In **Unguarded** mode the agent executes whatever it proposes. A SHIP that the guard ALLOWs returns a short-lived signed approval, and only that approval can create the (simulated) shipment.
+The live front door of the site. This page, separate from the mock-perception scenarios on `/scenarios`, runs the PackProof agent as a real loop: each turn it **perceives** (SAM 3.1 objects, text read from the frame, Voice transcript), **decides** (Muse Spark proposes ADVANCE / SEAL / SHIP / HOLD) and **acts**. In **Guarded** mode, every proposed action goes through `guardAction()`, which allows only the one action legal at the current ledger step and then calls the unchanged `reconcile()`. In **Unguarded** mode the agent executes whatever it proposes. A SHIP that the guard ALLOWs returns a short-lived signed approval, and only that approval can create the (simulated) shipment.
 
 * **Fail closed.** If image text, SAM or Voice is unavailable, a guarded turn BLOCKs and executes nothing.
 * **Server-derived state.** The client sends only a mode, a signed session token and media. Perception, transcript and ledger position are derived on the server.
@@ -239,13 +239,13 @@ cp .env.example .env.local # Optional: add Meta API keys; mocks are used without
 npm run dev
 ```
 
-Open http://localhost:3000
+Open http://localhost:3000 for the landing page. The live agent is at http://localhost:3000/packproof and the mock-perception scenarios are at http://localhost:3000/scenarios.
 
 ## Project Structure
 
 ```
 safelabs-guard/
-  app/                  # Next.js live PackProof demo
+  app/                  # Next.js: / landing, /packproof live agent, /scenarios mock-perception scenarios
   components/           # LiveAgent, Ledger, GuardDecision, BenchmarkBar
   lib/guard/            # reconcile.ts, ledger.ts, injections.ts
   lib/meta/             # spark.ts, sam.ts, voice.ts (live clients + mock fallback)
