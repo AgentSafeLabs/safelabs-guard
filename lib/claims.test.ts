@@ -1,5 +1,5 @@
 // Guards the public copy against claims we have not measured. Reads the page
-// components, the home page and the README as text; no network, no rendering.
+// components, the pages and the README as text; no network, no rendering.
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -17,7 +17,9 @@ function listFiles(dir: string): string[] {
 const FILES = [
   join(ROOT, "README.md"),
   join(ROOT, "app", "page.tsx"),
-  join(ROOT, "app", "packproof", "page.tsx"),
+  join(ROOT, "app", "live", "page.tsx"),
+  join(ROOT, "app", "scenarios", "page.tsx"),
+  join(ROOT, "lib", "home", "faq.ts"),
   ...listFiles(join(ROOT, "components")).filter((f) => f.endsWith(".tsx")),
 ];
 
@@ -41,7 +43,9 @@ describe("public copy claims", () => {
     const names = FILES.map((f) => f.slice(ROOT.length + 1));
     expect(names).toContain("README.md");
     expect(names).toContain("app/page.tsx");
-    expect(names).toContain("app/packproof/page.tsx");
+    expect(names).toContain("app/live/page.tsx");
+    expect(names).toContain("app/scenarios/page.tsx");
+    expect(names).toContain("lib/home/faq.ts");
     expect(names.some((n) => n.startsWith("components/"))).toBe(true);
   });
 

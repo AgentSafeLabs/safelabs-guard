@@ -1,3 +1,66 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Design tokens. Components use the Tailwind names mapped in tailwind.config.ts,
+   so a colour is defined once, here. */
+:root {
+  --bg: #0b0f14;
+  --surface: #121821;
+  --surface-2: #0f151d;
+  --chip: #18222f;
+  --border: #243040;
+  --border-strong: #33425a;
+  --text: #e6edf3;
+  --text-soft: #b7c3d1;
+  --muted: #9aa8b8;
+  --accent: #4cc9b0;
+  --accent-ink: #06201a;
+  --pending: #2a3647;
+  --allow-bg: #10261f;
+  --allow-border: #1f5a49;
+  --allow-text: #9fe6d2;
+  --hold-bg: #2b2210;
+  --hold-border: #7a5b17;
+  --hold-text: #f2c96b;
+  --danger-bg: #2a1717;
+  --danger-border: #7a2f2f;
+  --danger-text: #ffb4a8;
+  color-scheme: dark;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* One visible focus style for every interactive element. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Native disclosure widgets (<details>): hide the default marker; the
+   summary draws its own chevron. */
+summary {
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

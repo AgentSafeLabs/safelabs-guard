@@ -1,0 +1,47 @@
+// FAQ copy for the home page. Plain strings so tests can check the exact
+// wording and the claims scan can read them.
+
+export interface FaqItem {
+  question: string;
+  answer: string;
+}
+
+export const FAQ: readonly FaqItem[] = [
+  {
+    question: "What does Safelabs Guard stop?",
+    answer:
+      "An agent acting on the wrong object, or on instructions hidden in a sign or a spoken command. It holds the action when the proposal and the evidence disagree.",
+  },
+  {
+    question: "Does an AI model make the final decision?",
+    answer:
+      "No. Muse Spark proposes an action, but fixed rules in code decide whether it runs. No AI model is involved in that decision.",
+  },
+  {
+    question: "What happens if a part is down?",
+    answer: "If SAM, OCR, Voice or the agent is unavailable, the guard holds. Nothing ships on a guess.",
+  },
+  {
+    question: "Is the shipment real?",
+    answer: "No. The shipment is simulated. No goods, payments or carriers are involved.",
+  },
+  {
+    question: "What did it catch in testing, and what didn't it?",
+    answer:
+      "In live tests it held wrong objects, such as a banana or a laptop in place of the expected item, and flagged signs and spoken commands that tried to give the agent instructions. The model alone often resisted those injections, so the guard's clearest demonstrated win is the wrong object. In one test image SAM did not find the cable, so the guard held.",
+  },
+  {
+    question: "Which languages does voice support?",
+    answer: "English only. Other languages are blocked as a safe default.",
+  },
+  {
+    question: "Can it verify my own products?",
+    answer:
+      "The guard compares each proposal with an order ledger, so a different order means a different ledger. The live demo uses one fixed order, and we have only tested those three items.",
+  },
+  {
+    question: "Is it only for e-commerce?",
+    answer:
+      "The demo is a packing station. The same idea (check an agent's proposal against what it sees and hears, using fixed rules) applies to other camera and voice workflows. We have only tested packing.",
+  },
+];

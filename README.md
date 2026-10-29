@@ -6,7 +6,7 @@
 
 Built for the Meta AI Developer Hackathon by **Safe Labs AI Inc.** (Oct 26 - Nov 4)
 
-3-Minute Demo Video: _TODO — link not yet published_ | Live agent: https://guard.agentsafelabs.com/packproof | Scenarios (mock perception): https://guard.agentsafelabs.com/scenarios | [Benchmark Results](#benchmark) | [Live Meta verification (proven)](#live-meta-verification-proven)
+3-Minute Demo Video: _TODO — link not yet published_ | Live agent: https://guard.agentsafelabs.com/live | Scenarios (mock perception): https://guard.agentsafelabs.com/scenarios | [Benchmark Results](#benchmark) | [Live Meta verification (proven)](#live-meta-verification-proven)
 
 ---
 
@@ -166,9 +166,9 @@ Reproduce with the input photos: [`docs/test-images/red-mug.png`](docs/test-imag
 
 *SAM correctly verified desk (verified: true), but Guard still BLOCKs because VERIFY_MUG expects a red mug. SAM verifies, the ledger decides.*
 
-## PackProof agent (`/packproof`)
+## PackProof agent (`/live`)
 
-The live front door of the site. This page, separate from the mock-perception scenarios on `/scenarios`, runs the PackProof agent as a real loop: each turn it **perceives** (SAM 3.1 objects, text read from the frame, Voice transcript), **decides** (Muse Spark proposes ADVANCE / SEAL / SHIP / HOLD) and **acts**. In **Guarded** mode, every proposed action goes through `guardAction()`, which allows only the one action legal at the current ledger step and then calls the unchanged `reconcile()`. In **Unguarded** mode the agent executes whatever it proposes. A SHIP that the guard ALLOWs returns a short-lived signed approval, and only that approval can create the (simulated) shipment.
+The live agent page. It is separate from the mock-perception scenarios on `/scenarios`, runs the PackProof agent as a real loop: each turn it **perceives** (SAM 3.1 objects, text read from the frame, Voice transcript), **decides** (Muse Spark proposes ADVANCE / SEAL / SHIP / HOLD) and **acts**. In **Guarded** mode, every proposed action goes through `guardAction()`, which allows only the one action legal at the current ledger step and then calls the unchanged `reconcile()`. In **Unguarded** mode the agent executes whatever it proposes. A SHIP that the guard ALLOWs returns a short-lived signed approval, and only that approval can create the (simulated) shipment.
 
 * **Fail closed.** If image text, SAM or Voice is unavailable, a guarded turn BLOCKs and executes nothing.
 * **Server-derived state.** The client sends only a mode, a signed session token and media. Perception, transcript and ledger position are derived on the server.
@@ -183,7 +183,7 @@ The live front door of the site. This page, separate from the mock-perception sc
 | Simulated idempotent shipment (`/api/packproof/ship`) | yes, route tests | not yet | not yet |
 | Rate limit, daily live-call cap, kill switch (in-memory, per instance) | yes, unit tests | not yet | not yet |
 | Production refusal of mock mode | yes, unit tests | not yet | not yet |
-| Camera capture to JPEG (`/packproof`) | yes, sizing logic unit-tested | not yet | not yet |
+| Camera capture to JPEG (`/live`) | yes, sizing logic unit-tested | not yet | not yet |
 | Microphone to 16 kHz mono WAV | yes, encoder unit-tested | not yet | not yet |
 | Reading sign text from the frame via Muse Spark image input | yes, behind `SAFELABS_VISION=spark`; image input support unconfirmed | not yet | not yet |
 | OCR (tesseract.js) | adapter and `tesseract.js` dependency present; reads can miss text (see below) | not yet | not yet |
@@ -239,13 +239,37 @@ cp .env.example .env.local # Optional: add Meta API keys; mocks are used without
 npm run dev
 ```
 
-Open http://localhost:3000 for the landing page. The live agent is at http://localhost:3000/packproof and the mock-perception scenarios are at http://localhost:3000/scenarios.
+Open http://localhost:3000 for the home page. The live agent is at http://localhost:3000/live and the mock-perception scenarios are at http://localhost:3000/scenarios.
+
+## Routes
+
+| Route | What it is |
+| :--- | :--- |
+| `/` | Home: what Safelabs Guard is, how a turn is checked, FAQ |
+| `/live` | The PackProof agent with a real camera and microphone (guarded and unguarded modes) |
+| `/scenarios` | Scripted scenarios on mock perception, labelled as such |
+| `/api/agent/turn` | One agent turn (multipart: mode, session token, image, optional audio) |
+| `/api/packproof/ship` | Simulated shipment from a signed SHIP approval |
+| `/api/guard/live-check` | Live SAM check used by the Live verification box on `/scenarios` |
+| `/api/meta/status` | Which Meta clients are live or mock |
+
+## Limits
+
+* Voice is English only. Other languages are blocked as a safe default.
+* The shipment is simulated. No goods, payments or carriers are involved.
+* Refreshing the page restarts the run: the session token is held in browser memory only.
+* Rate limits and the daily cap are in memory per server instance, not global.
+* Only the PackProof packing demo (ORDER-1042: red mug, blue notebook, USB-C cable) has been tested.
+
+## Roadmap
+
+* Configurable ledgers and product sets.
 
 ## Project Structure
 
 ```
 safelabs-guard/
-  app/                  # Next.js: / landing, /packproof live agent, /scenarios mock-perception scenarios
+  app/                  # Next.js: / home, /live live agent, /scenarios mock-perception scenarios
   components/           # LiveAgent, Ledger, GuardDecision, BenchmarkBar
   lib/guard/            # reconcile.ts, ledger.ts, injections.ts
   lib/meta/             # spark.ts, sam.ts, voice.ts (live clients + mock fallback)

@@ -1,5 +1,5 @@
 // Scripted scenario demo (PASS -> attacked -> BLOCKED), moved here from the
-// home page. Perception is mock; the live agent is /packproof.
+// home page. Perception is mock; the live agent is /live.
 import type { Metadata } from "next";
 import Link from "next/link";
 import BenchmarkBar from "@/components/BenchmarkBar";
@@ -7,19 +7,19 @@ import LiveAgent from "@/components/LiveAgent";
 import LiveVerification from "@/components/LiveVerification";
 
 export const metadata: Metadata = {
-  title: "Scenarios (mock perception) · Safelabs Guard",
+  title: "Scenarios | Safelabs Guard",
   description:
     "Scripted ASI-MM scenarios replayed through the deterministic guard on mock perception clients. Not the live agent.",
 };
 
 export default function Scenarios() {
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100">
+    <main id="content" className="min-h-screen text-zinc-100">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         <div role="note" className="mb-6 rounded-lg border border-amber-600 bg-amber-950 px-4 py-3 text-sm text-amber-100">
           <strong>Mock perception:</strong> deterministic replay of the guard&apos;s decisions. For the live agent, go to{" "}
-          <Link href="/packproof" className="font-bold underline underline-offset-2">
-            /packproof
+          <Link href="/live" className="font-bold underline underline-offset-2">
+            /live
           </Link>
           .
         </div>

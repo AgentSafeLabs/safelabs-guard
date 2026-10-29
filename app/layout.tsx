@@ -16,6 +16,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
+        <a
+          href="#content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:inline-flex focus:min-h-11 focus:items-center focus:rounded-lg focus:bg-accent focus:px-4 focus:font-bold focus:text-accent-ink"
+        >
+          Skip to content
+        </a>
         <SiteNav />
         {children}
       </body>

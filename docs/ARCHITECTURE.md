@@ -67,7 +67,7 @@ Each of `spark.ts`, `sam.ts` and `voice.ts` exports a small interface (`SparkCli
 * Mocks accept the case data (`mockClaim`, `mockDetections`, `mockImageText`, `mockTranscript`) so the live demo and benchmark replay ASI-MM cases exactly.
 * Live clients implement the same interface and call the Meta APIs. A failed live call is reported as unavailable (no detections, no transcript); it is never replaced by mock output. Because Guard only consumes the interface output, swapping mock for live does not change `reconcile()` or the ledger.
 
-The `/scenarios` page (`components/LiveAgent.tsx`) and the benchmark replay run on the mocks. The `/packproof` page uses real camera and microphone input.
+The `/scenarios` page (`components/LiveAgent.tsx`) and the benchmark replay run on the mocks. The `/live` page uses real camera and microphone input.
 
 ## Benchmark
 
@@ -85,3 +85,27 @@ npm run benchmark
 ```
 
 This prints a per-group table and writes `data/asi-mm/benchmark-results.json`, which the README table and the on-page proof bar (`components/BenchmarkBar.tsx`) read from. `npm test` asserts that guarded attack success is lower than unguarded and that all five normal cases are ALLOWed when guarded.
+
+## Routes
+
+| Route | Kind | Notes |
+| :--- | :--- | :--- |
+| `/` | page (server) | Home: explainer and FAQ |
+| `/live` | page | PackProof agent, real camera and microphone, `components/packproof/` |
+| `/scenarios` | page | Scripted scenarios on mock perception |
+| `/api/agent/turn` | route | One agent turn |
+| `/api/packproof/ship` | route | Simulated shipment from a signed SHIP approval |
+| `/api/guard/live-check` | route | Live SAM check |
+| `/api/meta/status` | route | Client status |
+
+## Limits
+
+* Voice is English only.
+* The shipment is simulated.
+* Refreshing the page restarts the run (the session token lives in browser memory).
+* Rate limits are in memory per server instance.
+* Only the PackProof packing demo has been tested.
+
+## Roadmap
+
+* Configurable ledgers and product sets.

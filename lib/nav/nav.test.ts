@@ -1,125 +1,108 @@
-// Navigation restructure: the landing page leads to the live agent, the
-// scenario demo is labelled as mock, and no page carries a banned claim.
-// Pages are rendered to static HTML on the server; no browser, no network.
+// Shared navigation: links, external-link attributes, current page, mobile
+// menu, skip link. Rendered to static HTML on the server; no browser.
 
-import type { Metadata } from "next";
-import { createElement, type ReactElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 import RootLayout, { metadata as layoutMetadata } from "../../app/layout";
-import Home, { metadata as homeMetadata } from "../../app/page";
-import PackProofPage, { metadata as packproofMetadata } from "../../app/packproof/page";
-import Scenarios, { metadata as scenariosMetadata } from "../../app/scenarios/page";
+import { NavMenuView } from "../../components/nav/NavMenu";
 import SiteNav from "../../components/SiteNav";
-import { REPO_URL } from "./links";
+import { html, tags, text } from "../site/test-utils";
+import { BLOG_URL, REPO_URL } from "./links";
 
-const html = (el: ReactElement) => renderToStaticMarkup(el);
-const decode = (s: string) => s.replace(/&#x27;|&apos;/g, "'").replace(/\s+/g, " ");
-/** Visible text, with each tag becoming a space (keeps neighbouring blocks apart). */
-const text = (markup: string) => decode(markup.replace(/<[^>]*>/g, " "));
-/** Visible text with tags removed outright (keeps inline markup from splitting a sentence). */
-const flat = (markup: string) => decode(markup.replace(/<[^>]*>/g, ""));
+const nav = (pathname: string | null) => html(createElement(NavMenuView, { pathname }));
+const desktop = (markup: string) => /<ul[^>]*data-nav="desktop"[^>]*>(.*?)<\/ul>/s.exec(markup)?.[1] ?? "";
 
-const PAGES: [name: string, render: () => string][] = [
-  ["/", () => html(createElement(Home))],
-  ["/scenarios", () => html(createElement(Scenarios))],
-  ["/packproof", () => html(createElement(PackProofPage))],
-];
+describe("nav links", () => {
+  const list = desktop(nav("/"));
+  const anchors = tags(list, "a");
 
-// Keep in sync with BANNED in lib/claims.test.ts, which cannot be imported
-// (importing a test file would run its suite).
-const COUNTED_RESULT = /\d+\/\d+\*{0,2} \(100%\)/g;
-// The benchmark bar prints replay results read from benchmark-results.json
-// (for example "Normal ALLOW: 100%"). They are labelled outputs, not claims,
-// and the claims test exempts counted results the same way. Everything else
-// on the page is still scanned for "100%".
-const BENCHMARK_OUTPUT = /ASI-MM Benchmark.*?(?=Built by)/;
-const BANNED: readonly [name: string, pattern: RegExp][] = [
-  ["can make the unguarded agent ship", /can make the unguarded agent ship/i],
-  ["ship early", /ship(s|ped|ping)? early/i],
-  ["guaranteed", /guarantee/i],
-  ["100%", /100 ?%/],
-];
-
-describe("landing page /", () => {
-  const page = html(createElement(Home));
-
-  it("links to the live agent and to the scenarios", () => {
-    expect(page).toContain('href="/packproof"');
-    expect(page).toContain('href="/scenarios"');
-    expect(text(page)).toContain("Try the live PackProof agent");
-    expect(text(page)).toContain("Deterministic scenarios (mock perception)");
+  it("renders Home, Live agent, Scenarios, Blog and GitHub with the right hrefs", () => {
+    expect(anchors.map((a) => a.href)).toEqual(["/", "/live", "/scenarios", BLOG_URL, REPO_URL]);
+    expect(text(list)).toMatch(/Home\s+Live agent\s+Scenarios\s+Blog\s+GitHub/);
+    expect(BLOG_URL).toBe("https://agentsafelabs.com/blog/");
   });
 
-  it("states the status honestly and links the repo", () => {
-    expect(text(page)).toContain(
-      "Live Meta SAM, Spark and Voice on /packproof; scenarios use recorded or mock perception.",
-    );
-    expect(page).toContain(`href="${REPO_URL}"`);
-  });
-
-  it("does not render the scenario demo", () => {
-    expect(text(page)).not.toMatch(/Live verification|Guarded|Unguarded/);
-  });
-});
-
-describe("/scenarios", () => {
-  const page = html(createElement(Scenarios));
-
-  it("shows the mock-perception banner pointing at the live agent", () => {
-    const banner = /<div role="note"[^>]*>(.*?)<\/div>/s.exec(page)?.[1] ?? "";
-    expect(flat(banner)).toContain(
-      "Mock perception: deterministic replay of the guard's decisions. For the live agent, go to /packproof.",
-    );
-    expect(banner).toContain('href="/packproof"');
-    expect(banner).toMatch(/mock/i);
-  });
-
-  it("keeps the scenario demo components", () => {
-    expect(text(page)).toContain("SAM 3.1 (mock)");
-  });
-});
-
-describe("shared nav", () => {
-  const nav = html(createElement(SiteNav));
-
-  it("has Live agent, Scenarios and GitHub links in a labelled landmark", () => {
-    expect(nav).toContain('aria-label="Primary"');
-    expect(nav).toMatch(/href="\/packproof"[^>]*>Live agent</);
-    expect(nav).toMatch(/href="\/scenarios"[^>]*>Scenarios</);
-    expect(nav).toMatch(new RegExp(`href="${REPO_URL}"[^>]*>GitHub<`));
-  });
-
-  it("is rendered by the root layout, which wraps every page", () => {
-    const page = html(createElement(RootLayout, null, createElement("main", null, "x")));
-    expect(page).toContain('aria-label="Primary"');
-    expect(page).toContain("<main>x</main>");
-  });
-});
-
-describe("metadata", () => {
-  it("gives each page its own title", () => {
-    const titles = [homeMetadata, scenariosMetadata, packproofMetadata].map((m) => String(m.title));
-    expect(new Set(titles).size).toBe(3);
-    expect(String(scenariosMetadata.title)).toMatch(/mock/i);
-  });
-
-  it("carries no banned claim", () => {
-    const all: Metadata[] = [layoutMetadata, homeMetadata, scenariosMetadata, packproofMetadata];
-    for (const m of all) {
-      const copy = `${String(m.title)} ${String(m.description ?? "")}`;
-      for (const [name, pattern] of BANNED) expect(copy, name).not.toMatch(pattern);
+  it("opens Blog and GitHub in a new tab with noopener noreferrer", () => {
+    for (const a of anchors.filter((x) => x.href === BLOG_URL || x.href === REPO_URL)) {
+      expect(a.target).toBe("_blank");
+      expect(a.rel).toContain("noopener");
+      expect(a.rel).toContain("noreferrer");
     }
+    for (const a of anchors.filter((x) => x.href.startsWith("/"))) expect(a.target).toBeUndefined();
+  });
+
+  it("marks only the current page with aria-current", () => {
+    for (const [path, label] of [["/", "Home"], ["/live", "Live agent"], ["/scenarios", "Scenarios"]] as const) {
+      const current = tags(desktop(nav(path)), "a").filter((a) => a["aria-current"] === "page");
+      expect(current, path).toHaveLength(1);
+      expect(current[0].href).toBe(path);
+      expect(text(desktop(nav(path)))).toContain(label);
+    }
+    expect(tags(desktop(nav("/elsewhere")), "a").filter((a) => a["aria-current"])).toHaveLength(0);
+  });
+
+  it("gives the current link the chip background and bold text", () => {
+    const current = tags(desktop(nav("/live")), "a").find((a) => a["aria-current"] === "page")!;
+    expect(current.class).toContain("bg-chip");
+    expect(current.class).toContain("font-bold");
+  });
+
+  it("gives every link at least a 44px target", () => {
+    for (const a of anchors) expect(a.class).toContain("min-h-11");
   });
 });
 
-describe("banned claim phrases", () => {
-  for (const [route, render] of PAGES) {
-    for (const [name, pattern] of BANNED) {
-      it(`${route} does not contain "${name}"`, () => {
-        const copy = text(render()).replace(COUNTED_RESULT, "").replace(BENCHMARK_OUTPUT, "");
-        expect(copy).not.toMatch(pattern);
-      });
-    }
-  }
+describe("mobile menu", () => {
+  const markup = nav("/");
+  const button = tags(markup, "button")[0];
+
+  it("starts closed, with a labelled 44px button wired to the panel", () => {
+    expect(button["aria-label"]).toBe("Open menu");
+    expect(button["aria-expanded"]).toBe("false");
+    expect(button["aria-controls"]).toBe("mobile-nav-panel");
+    expect(button.class).toContain("h-11");
+    expect(button.class).toContain("w-11");
+  });
+
+  it("renders the panel (hidden) with the same links on 48px rows", () => {
+    const panel = tags(markup, "ul").find((u) => u.id === "mobile-nav-panel")!;
+    expect(panel).toBeDefined();
+    expect(panel.hidden).toBeDefined();
+    const links = /<ul[^>]*id="mobile-nav-panel"[^>]*>(.*?)<\/ul>/s.exec(markup)![1];
+    const anchors = tags(links, "a");
+    expect(anchors.map((a) => a.href)).toEqual(["/", "/live", "/scenarios", BLOG_URL, REPO_URL]);
+    for (const a of anchors) expect(a.class).toContain("min-h-12");
+  });
+});
+
+describe("site nav and layout", () => {
+  it("is a labelled Main landmark with the logo linking home", () => {
+    const markup = html(createElement(SiteNav));
+    expect(markup).toContain('<nav aria-label="Main"');
+    const home = tags(markup, "a")[0];
+    expect(home.href).toBe("/");
+    expect(text(markup)).toContain("Safelabs Guard");
+    expect(markup).toContain('aria-hidden="true"');
+  });
+
+  it("draws the logo as a shield with a check in accent stroke", () => {
+    const markup = html(createElement(SiteNav));
+    expect(markup).toContain('d="M12 3l7 3v5c0 4.6-3 8.3-7 10-4-1.7-7-5.4-7-10V6z"');
+    expect(markup).toContain('d="M8.5 12l2.5 2.5 4.5-5"');
+    expect(markup).toContain('viewBox="0 0 24 24"');
+    expect(markup).toContain('stroke-width="2"');
+  });
+
+  it("puts a skip link before the nav in the root layout", () => {
+    const page = html(createElement(RootLayout, null, createElement("main", { id: "content" }, "x")));
+    const firstLink = tags(page, "a")[0];
+    expect(firstLink.href).toBe("#content");
+    expect(page.indexOf("Skip to content")).toBeLessThan(page.indexOf("<nav"));
+    expect(page).toContain('<main id="content">x</main>');
+  });
+
+  it("has a default title and description", () => {
+    expect(String(layoutMetadata.title)).toBe("Safelabs Guard");
+    expect(String(layoutMetadata.description)).not.toBe("");
+  });
 });

@@ -1,41 +1,21 @@
-"use client";
-
-// Site-wide navigation, rendered once from app/layout.tsx.
+// Site-wide navigation, rendered once from app/layout.tsx. The logo and the
+// landmark are server-rendered; only the link list and the mobile menu need
+// the current path and open/closed state, so they live in NavMenu (client).
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { NAV_LINKS, REPO_URL } from "@/lib/nav/links";
-
-const linkClass =
-  "inline-flex min-h-11 items-center rounded px-3 text-sm font-medium text-zinc-300 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-100 aria-[current=page]:bg-zinc-800 aria-[current=page]:text-white";
+import { LogoMark } from "@/components/icons";
+import NavMenu from "@/components/nav/NavMenu";
 
 export default function SiteNav() {
-  const pathname = usePathname();
   return (
-    <nav aria-label="Primary" className="border-b border-zinc-800 bg-zinc-950">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 px-2 sm:px-4">
-        <Link
-          href="/"
-          aria-current={pathname === "/" ? "page" : undefined}
-          className="inline-flex min-h-11 items-center rounded px-2 text-sm font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-100"
-        >
-          Safelabs Guard
+    <header className="border-b border-line bg-page">
+      <nav aria-label="Main" className="relative mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2 sm:px-6">
+        <Link href="/" className="inline-flex min-h-11 items-center gap-3 rounded-lg pr-2 text-base font-bold text-ink">
+          <LogoMark />
+          <span>Safelabs Guard</span>
         </Link>
-        <ul className="flex flex-wrap items-center">
-          {NAV_LINKS.map(({ href, label }) => (
-            <li key={href}>
-              <Link href={href} aria-current={pathname === href ? "page" : undefined} className={linkClass}>
-                {label}
-              </Link>
-            </li>
-          ))}
-          <li>
-            <a href={REPO_URL} rel="noopener noreferrer" className={linkClass}>
-              GitHub
-            </a>
-          </li>
-        </ul>
-      </div>
-    </nav>
+        <NavMenu />
+      </nav>
+    </header>
   );
 }

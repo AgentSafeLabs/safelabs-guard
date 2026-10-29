@@ -7,51 +7,26 @@
 // All server text is rendered as React text nodes.
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
-import { STEPS } from "@/lib/guard/ledger";
+import { AlertIcon } from "@/components/icons";
 import {
   AgentApiError,
-  agentSawText,
   requestShip,
   sendTurn,
   startSession,
   type ClientSession,
   type ShipResponse,
-  type TurnResponse,
 } from "@/lib/client/agent-api";
 import { captureFrame, startCamera, stopCamera } from "@/lib/client/camera";
-import { failClosedExplanation, imageTextLabel, injectionBanner, sourceBadgeText } from "@/lib/client/labels";
 import { checkUpload, UPLOAD_ACCEPT } from "@/lib/client/upload";
 import { discardRecording, startRecording, stopRecording } from "@/lib/client/mic";
 import { MAX_DURATION_SECONDS } from "@/lib/client/wav";
 import type { AgentMode } from "@/lib/agent/types";
-
-interface HistoryEntry {
-  id: number;
-  at: string;
-  response: TurnResponse;
-  hadAudio: boolean;
-}
-
-type SourceLabel = TurnResponse["sources"]["sam"];
-
-interface Frame {
-  blob: Blob;
-  url: string;
-  origin: "camera" | "uploaded";
-}
-
-const DECISION_STYLES: Record<string, string> = {
-  ALLOW: "border-emerald-400 bg-emerald-600 text-white",
-  BLOCK: "border-red-300 bg-red-600 text-white",
-  HOLD: "border-amber-400 bg-amber-500 text-zinc-950",
-  UNGUARDED: "border-amber-400 bg-amber-950 text-amber-200",
-};
-
-const SOURCE_STYLES: Record<SourceLabel, string> = {
-  live: "border-emerald-600 bg-emerald-950 text-emerald-200",
-  mock: "border-amber-600 bg-amber-950 text-amber-200",
-  unavailable: "border-zinc-600 bg-zinc-900 text-zinc-400",
-};
+import InputPanel from "./InputPanel";
+import ProgressCard from "./ProgressCard";
+import ResultPanel from "./ResultPanel";
+import ShipPanel from "./ShipPanel";
+import VoiceCard from "./VoiceCard";
+import type { Frame, HistoryEntry, InputMode } from "./types";
 
 function messageOf(err: unknown): string {
   if (err instanceof AgentApiError) return err.serverReason ? `${err.message} (${err.serverReason})` : err.message;
@@ -59,123 +34,12 @@ function messageOf(err: unknown): string {
   return "Something went wrong.";
 }
 
-function SourceBadge({ label, source, detail, notSent }: { label: string; source: SourceLabel; detail?: string; notSent?: boolean }) {
-  return (
-    <span
-      className={`rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase ${notSent ? SOURCE_STYLES.unavailable : SOURCE_STYLES[source] ?? SOURCE_STYLES.unavailable}`}
-      title={detail}
-    >
-      {sourceBadgeText(label, source, { notSent })}
-    </span>
-  );
-}
-
-function StepTracker({ ledger }: { ledger: TurnResponse["ledger"] | null }) {
-  const index = ledger ? (ledger.status === "COMPLETE" ? STEPS.length : ledger.stepIndex) : 0;
-  return (
-    <ol className="grid grid-cols-5 gap-1" aria-label="Ledger steps">
-      {STEPS.map((step, i) => {
-        const state = i < index ? "done" : i === index ? "current" : "todo";
-        const tone =
-          state === "done"
-            ? "border-emerald-600 bg-emerald-950 text-emerald-200"
-            : state === "current"
-              ? "border-white bg-zinc-800 text-white"
-              : "border-zinc-800 bg-zinc-950 text-zinc-500";
-        return (
-          <li
-            key={step}
-            className={`rounded-md border px-1 py-1.5 text-center font-mono text-[10px] sm:text-xs ${tone}`}
-            aria-current={state === "current" ? "step" : undefined}
-          >
-            {state === "done" ? "✓ " : ""}
-            {step}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border-b border-zinc-800 py-1.5 text-sm last:border-0">
-      <span className="mr-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">{label}</span>
-      <span className="break-words font-mono text-zinc-200">{value}</span>
-    </div>
-  );
-}
-
-function TurnCard({ entry, prominent }: { entry: HistoryEntry; prominent: boolean }) {
-  const { turn, sources, ledger, shipped, perceptionDetail = {}, securityEvents = [] } = entry.response;
-  const decision = turn.guard?.decision ?? "UNGUARDED";
-  const reason = turn.guard ? turn.guard.reason : "No guard: the agent acted on its own proposal.";
-  const banner = injectionBanner(securityEvents);
-  const explanation = failClosedExplanation(turn.guard);
-  const voiceNotSent = !entry.hadAudio || perceptionDetail.voice === "voice not sent";
-  const unavailable = Object.entries(perceptionDetail).filter(([name, detail]) => detail && !(name === "voice" && voiceNotSent));
-  return (
-    <article className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 sm:p-4">
-      <header className="mb-2 flex flex-wrap items-center gap-2">
-        <span className="font-mono text-xs text-zinc-500">
-          Turn {turn.turn} · {turn.mode} · {entry.at}
-        </span>
-        <span className="font-mono text-xs text-zinc-400">at {turn.step}</span>
-      </header>
-      {banner && (
-        <div role="alert" className="mb-2 rounded-xl border-2 border-fuchsia-400 bg-fuchsia-950 px-3 py-2 text-sm font-bold text-fuchsia-100">
-          ⚠ {banner}
-          <ul className="mt-1 space-y-0.5 font-mono text-xs font-normal text-fuchsia-200">
-            {securityEvents.map((e, i) => (
-              <li key={i}>
-                {e.source}: &quot;{e.excerpt}&quot;
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <div className={`rounded-xl border-2 px-4 ${prominent ? "py-4" : "py-2"} text-center ${DECISION_STYLES[decision]}`}>
-        <div className={`${prominent ? "text-4xl" : "text-xl"} font-black tracking-tight`}>{decision}</div>
-        <p className="mt-1 text-sm font-semibold">{reason}</p>
-        {explanation && <p className="mt-1 text-sm">{explanation}</p>}
-      </div>
-      <div className="mt-3">
-        <Field label="Agent saw" value={agentSawText(turn)} />
-        <Field label="Proposed" value={turn.sparkDecision.proposedAction} />
-        <Field label="Claimed" value={turn.sparkDecision.claimedObjects.join(", ") || "(nothing)"} />
-        <Field label="Rationale" value={turn.sparkDecision.rationale || "(none)"} />
-        <Field label="Executed" value={turn.executed ?? "nothing"} />
-        <Field label="SAM saw" value={turn.perception.samObjects.join(", ") || "(nothing)"} />
-        <Field
-          label="Heard"
-          value={turn.perception.transcript ? `"${turn.perception.transcript}"` : entry.hadAudio ? "(no usable transcript)" : "(no audio sent)"}
-        />
-        <Field
-          label={imageTextLabel(sources.vision)}
-          value={turn.perception.imageText ? `"${turn.perception.imageText}"` : "(none read)"}
-        />
-        <Field label="Ledger" value={`${ledger.step} · ${ledger.status}${shipped ? " · SHIPPED" : ""}`} />
-      </div>
-      <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Perception sources">
-        <SourceBadge label="SAM" source={sources.sam} detail={perceptionDetail.sam} />
-        <SourceBadge label="Image text" source={sources.vision} detail={perceptionDetail.vision} />
-        <SourceBadge label="Spark" source={sources.spark} detail={perceptionDetail.spark} />
-        <SourceBadge label="Voice" source={sources.voice} detail={perceptionDetail.voice} notSent={voiceNotSent} />
-      </div>
-      {unavailable.length > 0 && (
-        <p className="mt-1 font-mono text-[11px] text-zinc-400">
-          Why unavailable: {unavailable.map(([name, detail]) => `${name}: ${detail}`).join(" · ")}
-        </p>
-      )}
-    </article>
-  );
-}
-
-const button =
-  "rounded-lg px-4 py-2 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-40";
+const modeButton =
+  "inline-flex min-h-11 items-center justify-center rounded-lg px-5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40";
 
 export default function PackProofClient() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const historyId = useRef(0);
 
@@ -192,6 +56,12 @@ export default function PackProofClient() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [approval, setApproval] = useState<string | null>(null);
   const [shipResult, setShipResult] = useState<ShipResponse | null>(null);
+  // Display-only state for the redesigned layout.
+  const [inputMode, setInputMode] = useState<InputMode>("camera");
+  const [chosen, setChosen] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [waited, setWaited] = useState(0);
 
   const latest = history[0]?.response ?? null;
   const mode = session.mode;
@@ -224,6 +94,16 @@ export default function PackProofClient() {
     [],
   );
 
+  useEffect(() => {
+    if (!sending) {
+      setWaited(0);
+      return;
+    }
+    const started = Date.now();
+    const id = setInterval(() => setWaited(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [sending]);
+
   function resetRun(nextMode: AgentMode) {
     setSession(startSession(nextMode));
     setHistory([]);
@@ -235,6 +115,7 @@ export default function PackProofClient() {
 
   async function toggleCamera() {
     setError(null);
+    setCameraError(null);
     if (cameraOn) {
       stopCamera(videoRef.current);
       setCameraOn(false);
@@ -247,7 +128,7 @@ export default function PackProofClient() {
       setCameraOn(true);
       setStatus("Camera on.");
     } catch (err) {
-      setError(messageOf(err));
+      setCameraError(messageOf(err));
     }
   }
 
@@ -259,7 +140,7 @@ export default function PackProofClient() {
         await startCamera(videoRef.current, next);
       } catch (err) {
         setCameraOn(false);
-        setError(messageOf(err));
+        setCameraError(messageOf(err));
       }
     }
   }
@@ -334,6 +215,7 @@ export default function PackProofClient() {
   async function send() {
     if (!frame) return;
     setBusy(true);
+    setSending(true);
     setError(null);
     setStatus("Sending turn…");
     try {
@@ -366,6 +248,7 @@ export default function PackProofClient() {
       }
     } finally {
       setBusy(false);
+      setSending(false);
     }
   }
 
@@ -385,11 +268,37 @@ export default function PackProofClient() {
     }
   }
 
+  function retake() {
+    replaceFrame(null);
+    setStatus(cameraOn ? "Camera on." : "Frame cleared.");
+  }
+
+  function chooseMode(next: InputMode) {
+    if (next === inputMode) return;
+    setInputMode(next);
+    setCameraError(null);
+    // Leaving the camera for an image: release the camera.
+    if (next === "upload" && cameraOn) {
+      stopCamera(videoRef.current);
+      setCameraOn(false);
+      setStatus("Camera off.");
+    }
+  }
+
+  function chooseSource(next: InputMode) {
+    setChosen(true);
+    setInputMode(next);
+    if (next === "camera" && !cameraOn) void toggleCamera();
+  }
+
+  const lastDecision = latest?.turn.guard?.decision ?? null;
+  const canSend = Boolean(frame) && !busy && !recording;
+
   return (
     <div className="space-y-6">
       {/* Mode */}
       <div className="flex flex-wrap items-center gap-3">
-        <div role="radiogroup" aria-label="Agent mode" className="flex rounded-full border border-zinc-700 p-1">
+        <div role="radiogroup" aria-label="Agent mode" className="flex gap-1 rounded-xl border border-line bg-surface p-1">
           {(["guarded", "unguarded"] as const).map((m) => (
             <button
               key={m}
@@ -398,173 +307,84 @@ export default function PackProofClient() {
               aria-checked={mode === m}
               onClick={() => mode !== m && resetRun(m)}
               disabled={busy}
-              className={`${button} rounded-full ${
-                mode === m
-                  ? m === "guarded"
-                    ? "bg-emerald-500 text-zinc-950"
-                    : "bg-amber-400 text-zinc-950"
-                  : "text-zinc-300 hover:bg-zinc-800"
-              }`}
+              className={`${modeButton} ${mode === m ? "bg-accent text-accent-ink" : "text-soft hover:bg-chip"}`}
             >
               {m === "guarded" ? "Guarded" : "Unguarded"}
             </button>
           ))}
         </div>
-        <span className="text-xs text-zinc-500">Changing mode starts a new run.</span>
-        <button type="button" onClick={() => resetRun(mode)} disabled={busy} className={`${button} border border-zinc-700 text-zinc-300 hover:bg-zinc-800`}>
+        <span className="text-sm text-muted">Changing mode starts a new run.</span>
+        <button
+          type="button"
+          onClick={() => resetRun(mode)}
+          disabled={busy}
+          className={`${modeButton} border border-line-strong text-soft hover:bg-chip sm:ml-auto`}
+        >
           Restart run
         </button>
       </div>
       {mode === "unguarded" && (
-        <div className="rounded-xl border-2 border-amber-400 bg-amber-950 px-4 py-2 text-center font-bold text-amber-200">
-          ⚠ Unguarded: the agent executes whatever it proposes
+        <div className="flex items-center gap-2 rounded-xl border border-hold-border bg-hold-bg px-4 py-3 font-bold text-hold-text">
+          <AlertIcon className="h-5 w-5 shrink-0" />
+          Unguarded: the agent executes whatever it proposes
         </div>
       )}
 
-      <StepTracker ledger={latest?.ledger ?? null} />
+      <ProgressCard ledger={latest?.ledger ?? null} lastDecision={lastDecision} />
 
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
         {/* Inputs */}
-        <section className="space-y-4 lg:col-span-3" aria-label="Turn inputs">
-          <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-900">
-            <video ref={videoRef} className="h-full w-full object-cover" playsInline muted aria-label="Camera preview" />
-            {!cameraOn && (
-              <div className="absolute inset-0 flex items-center justify-center text-sm text-zinc-500">Camera is off</div>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={toggleCamera} className={`${button} bg-zinc-800 text-zinc-100 hover:bg-zinc-700`}>
-              {cameraOn ? "Stop camera" : "Start camera"}
-            </button>
-            <button type="button" onClick={flipCamera} className={`${button} bg-zinc-800 text-zinc-100 hover:bg-zinc-700`} aria-label="Switch between front and back camera">
-              Flip ({facing === "environment" ? "back" : "front"})
-            </button>
-            <button type="button" onClick={capture} disabled={!cameraOn} className={`${button} bg-white text-zinc-950 hover:bg-zinc-200`}>
-              {frame ? "Retake" : "Capture"}
-            </button>
-            <label className={`${button} cursor-pointer border border-zinc-700 text-zinc-300 hover:bg-zinc-800 focus-within:ring-2 focus-within:ring-sky-400`}>
-              Use a test image instead of the camera
-              <input type="file" accept={UPLOAD_ACCEPT} onChange={upload} className="sr-only" />
-            </label>
-          </div>
-          <p className="text-xs text-zinc-500">Test images: JPEG or PNG, up to 8 MB.</p>
-
-          {frame && (
-            <figure className="flex items-center gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element -- local blob URL */}
-              <img
-                src={frame.url}
-                alt={frame.origin === "uploaded" ? "Uploaded test image" : "Last captured frame"}
-                className="h-20 w-32 rounded-lg border border-zinc-700 object-cover"
-              />
-              <figcaption className="text-xs text-zinc-400">
-                {frame.origin === "uploaded" ? (
-                  <span className="mr-1 rounded border border-sky-600 bg-sky-950 px-1 font-mono uppercase text-sky-200">uploaded</span>
-                ) : (
-                  "Captured frame · "
-                )}
-                {Math.round(frame.blob.size / 1024)} KB {frame.blob.type === "image/png" ? "PNG" : "JPEG"}
-                <button type="button" onClick={() => replaceFrame(null)} className="ml-2 underline hover:text-zinc-200">
-                  Clear
-                </button>
-              </figcaption>
-            </figure>
-          )}
-
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={toggleRecording}
-                aria-pressed={recording}
-                className={`${button} ${recording ? "bg-red-600 text-white hover:bg-red-500" : "bg-zinc-800 text-zinc-100 hover:bg-zinc-700"}`}
-              >
-                {recording ? "Stop recording" : "Record voice"}
-              </button>
-              {recording && (
-                <span className="font-mono text-sm text-red-300" aria-label="Recording time">
-                  ● {elapsed.toFixed(1)} / {MAX_DURATION_SECONDS}s
-                </span>
-              )}
-              {clip && !recording && (
-                <>
-                  <audio src={clip.url} controls className="h-8" aria-label="Recorded clip preview" />
-                  <button type="button" onClick={() => replaceClip(null)} className={`${button} border border-zinc-700 text-zinc-300 hover:bg-zinc-800`}>
-                    Discard clip
-                  </button>
-                </>
-              )}
-            </div>
-            <p className="mt-2 text-xs text-zinc-500">
-              Voice is optional. Only what the server transcribes from this clip is used.
-            </p>
-          </div>
-
+        <div className="space-y-4">
+          <InputPanel
+            videoRef={videoRef}
+            fileRef={fileRef}
+            accept={UPLOAD_ACCEPT}
+            onFile={upload}
+            inputMode={inputMode}
+            chosen={chosen}
+            cameraOn={cameraOn}
+            facing={facing}
+            frame={frame}
+            cameraError={cameraError}
+            onChoose={chooseSource}
+            onMode={chooseMode}
+            onToggleCamera={toggleCamera}
+            onFlip={flipCamera}
+            onCapture={capture}
+            onRetake={retake}
+          />
+          <VoiceCard
+            recording={recording}
+            elapsed={elapsed}
+            clip={clip}
+            onToggle={toggleRecording}
+            onDiscard={() => replaceClip(null)}
+          />
           <button
             type="button"
             onClick={send}
-            disabled={!frame || busy || recording}
-            className="w-full rounded-xl bg-white px-6 py-4 text-xl font-black text-zinc-950 transition hover:bg-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-40"
+            disabled={!canSend}
+            className="inline-flex min-h-[52px] w-full items-center justify-center rounded-xl bg-accent px-6 text-lg font-black text-accent-ink hover:brightness-110 disabled:cursor-not-allowed disabled:bg-pending disabled:text-muted disabled:hover:brightness-100"
           >
             {busy ? "Working…" : `Send turn (${mode})`}
           </button>
-          {!frame && <p className="text-xs text-zinc-500">Capture a frame or choose a test image first.</p>}
-        </section>
-
-        {/* Result */}
-        <section className="space-y-4 lg:col-span-2" aria-label="Turn result">
-          <p role="status" aria-live="polite" className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+          {!frame && <p className="text-sm text-muted">Capture a frame or choose a test image first.</p>}
+          <p role="status" aria-live={sending ? "off" : "polite"} className="text-sm text-soft">
             {status}
           </p>
           {error && (
-            <p role="alert" className="rounded-lg border border-red-700 bg-red-950 px-3 py-2 text-sm text-red-200">
+            <p role="alert" className="rounded-xl border border-danger-border bg-danger-bg px-4 py-3 text-sm text-danger-text">
               {error}
             </p>
           )}
-          {history[0] ? (
-            <TurnCard entry={history[0]} prominent />
-          ) : (
-            <p className="text-sm text-zinc-500">No turns yet.</p>
-          )}
+        </div>
 
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
-            <button
-              type="button"
-              onClick={ship}
-              disabled={!approval || busy || Boolean(shipResult)}
-              className={`${button} w-full bg-emerald-500 text-zinc-950 hover:bg-emerald-400`}
-            >
-              {shipResult ? "Shipped" : "Ship order"}
-            </button>
-            <p className="mt-1 text-xs text-zinc-500">
-              {shipResult
-                ? "Shipped. Repeating this approval returns the same shipment."
-                : approval
-                  ? "Approval received: the guard ALLOWed SHIP."
-                  : "Enabled only after the guard ALLOWs SHIP."}
-            </p>
-            {shipResult && (
-              <div className="mt-2 text-sm" aria-live="polite">
-                <Field label="Shipment" value={shipResult.shipment.shipmentId} />
-                <Field label="Order" value={shipResult.shipment.orderId} />
-                <Field label="Created" value={shipResult.shipment.createdAt} />
-                <Field label="Status" value="shipment" />
-              </div>
-            )}
-          </div>
-        </section>
+        {/* Result */}
+        <div className="space-y-4">
+          <ResultPanel history={history} sending={sending} waited={waited} shipResult={shipResult} />
+          <ShipPanel approval={approval} shipResult={shipResult} busy={busy} onShip={ship} />
+        </div>
       </div>
-
-      {history.length > 1 && (
-        <section aria-label="Turn history" className="space-y-3">
-          <h2 className="text-lg font-bold text-white">History (newest first)</h2>
-          <div className="grid gap-3 md:grid-cols-2">
-            {history.slice(1).map((entry) => (
-              <TurnCard key={entry.id} entry={entry} prominent={false} />
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }
