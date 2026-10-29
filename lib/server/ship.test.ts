@@ -4,14 +4,12 @@ import { POST as turn } from "../../app/api/agent/turn/route";
 import { signApproval, type ShipAllowance } from "../agent/approval";
 import { stubLiveEnv, stubMeta, turnRequest, type Scene } from "./meta-stub.test-helpers";
 import { resetRateLimits } from "./rate-limit";
-import { resetShipments } from "./ship";
 
 const ALLOW: ShipAllowance = { mode: "guarded", step: "SHIP", proposedAction: "SHIP", decision: "ALLOW" };
 const fetchMock = vi.fn<typeof fetch>();
 
 beforeEach(() => {
   resetRateLimits();
-  resetShipments();
   fetchMock.mockReset();
   vi.stubGlobal("fetch", fetchMock);
   stubLiveEnv();
@@ -51,16 +49,15 @@ describe("POST /api/packproof/ship", () => {
     expect(other).toEqual({ status: 403, body: { error: "Approval rejected", reason: "approval is for a different order" } });
   });
 
-  it("200 with a valid approval, and idempotent on repeat", async () => {
+  it("200 with a valid approval, and the same shipment on repeat", async () => {
     const approval = signApproval("ORDER-1042", ALLOW);
     const first = await callShip({ approval });
     expect(first.status).toBe(200);
-    expect(first.body.alreadyShipped).toBe(false);
-    expect(first.body.shipment).toMatchObject({ orderId: "ORDER-1042", shipmentId: expect.stringMatching(/^SHP-/) });
+    expect(first.body.status).toBe("shipment");
+    expect(first.body.shipment).toMatchObject({ orderId: "ORDER-1042", shipmentId: expect.stringMatching(/^SHP-[0-9A-F]{12}$/) });
 
-    const second = await callShip({ approval: signApproval("ORDER-1042", ALLOW) });
-    expect(second.status).toBe(200);
-    expect(second.body).toEqual({ shipment: first.body.shipment, alreadyShipped: true });
+    const second = await callShip({ approval });
+    expect(second).toEqual(first);
   });
 });
 
@@ -94,7 +91,9 @@ describe("guarded run end to end", () => {
     expect(after.turn.guard).toEqual({ decision: "BLOCK", reason: "Order already complete" });
     expect(after.approval).toBeUndefined();
 
-    expect((await callShip({ approval })).body.alreadyShipped).toBe(false);
-    expect((await callShip({ approval })).body.alreadyShipped).toBe(true);
+    const first = await callShip({ approval });
+    const second = await callShip({ approval });
+    expect(first.status).toBe(200);
+    expect(second).toEqual(first);
   });
 });

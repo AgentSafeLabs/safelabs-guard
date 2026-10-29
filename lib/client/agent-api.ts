@@ -35,7 +35,8 @@ export interface TurnResponse {
 
 export interface ShipResponse {
   shipment: ShipmentRecord;
-  alreadyShipped: boolean;
+  /** Neutral: the server is stateless and cannot tell a first call from a repeat. */
+  status: "shipment";
 }
 
 export type AgentApiErrorKind =
@@ -211,7 +212,7 @@ export async function requestShip(input: { approval: string }, fetchImpl: typeof
   const body = await readJson(res);
   if (!res.ok) throw toError(res, body, "ship", [input.approval]);
   const shipment = body?.shipment as Record<string, unknown> | undefined;
-  if (!shipment || typeof shipment.shipmentId !== "string" || typeof body?.alreadyShipped !== "boolean") {
+  if (!shipment || typeof shipment.shipmentId !== "string" || body?.status !== "shipment") {
     throw new AgentApiError("bad-response", "The server sent an unexpected reply.", res.status);
   }
   return body as unknown as ShipResponse;

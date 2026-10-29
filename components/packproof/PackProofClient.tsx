@@ -349,7 +349,10 @@ export default function PackProofClient() {
         { id: historyId.current, at: new Date().toLocaleTimeString(), response, hadAudio: Boolean(clip) },
         ...h,
       ]);
-      if (response.approval) setApproval(response.approval);
+      if (response.approval) {
+        setApproval(response.approval);
+        setShipResult(null);
+      }
       const decision = response.turn.guard?.decision ?? "UNGUARDED";
       setStatus(
         `Turn ${response.turn.turn}: ${decision}${response.turn.guard ? ` — ${response.turn.guard.reason}` : ""}. Ledger at ${response.ledger.step}.`,
@@ -367,13 +370,13 @@ export default function PackProofClient() {
   }
 
   async function ship() {
-    if (!approval) return;
+    if (!approval || shipResult) return;
     setBusy(true);
     setError(null);
     try {
       const result = await requestShip({ approval });
       setShipResult(result);
-      setStatus(result.alreadyShipped ? "Already shipped: same shipment returned." : "Shipment created.");
+      setStatus(`Shipped: ${result.shipment.shipmentId}.`);
     } catch (err) {
       setError(messageOf(err));
       if (err instanceof AgentApiError && err.kind === "approval-rejected") setApproval(null);
@@ -528,20 +531,24 @@ export default function PackProofClient() {
             <button
               type="button"
               onClick={ship}
-              disabled={!approval || busy}
+              disabled={!approval || busy || Boolean(shipResult)}
               className={`${button} w-full bg-emerald-500 text-zinc-950 hover:bg-emerald-400`}
             >
-              Ship order
+              {shipResult ? "Shipped" : "Ship order"}
             </button>
             <p className="mt-1 text-xs text-zinc-500">
-              {approval ? "Approval received: the guard ALLOWed SHIP." : "Enabled only after the guard ALLOWs SHIP."}
+              {shipResult
+                ? "Shipped. Repeating this approval returns the same shipment."
+                : approval
+                  ? "Approval received: the guard ALLOWed SHIP."
+                  : "Enabled only after the guard ALLOWs SHIP."}
             </p>
             {shipResult && (
               <div className="mt-2 text-sm" aria-live="polite">
                 <Field label="Shipment" value={shipResult.shipment.shipmentId} />
                 <Field label="Order" value={shipResult.shipment.orderId} />
                 <Field label="Created" value={shipResult.shipment.createdAt} />
-                <Field label="Status" value={shipResult.alreadyShipped ? "already shipped (same record)" : "new shipment"} />
+                <Field label="Status" value="shipment" />
               </div>
             )}
           </div>

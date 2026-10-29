@@ -113,10 +113,10 @@ describe("requestShip", () => {
   it("posts JSON { approval } to the ship route", async () => {
     const fetchImpl = reply(200, {
       shipment: { shipmentId: "SHP-1", orderId: "ORDER-1042", createdAt: "2026-10-28T00:00:00.000Z" },
-      alreadyShipped: true,
+      status: "shipment",
     });
     const res = await requestShip({ approval: APPROVAL }, fetchImpl);
-    expect(res.alreadyShipped).toBe(true);
+    expect(res.status).toBe("shipment");
     const [url, init] = fetchImpl.mock.calls[0];
     expect(url).toBe(SHIP_URL);
     expect(JSON.parse(String(init?.body))).toEqual({ approval: APPROVAL });

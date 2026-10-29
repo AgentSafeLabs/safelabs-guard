@@ -52,6 +52,15 @@ export function newJti(): string {
   return randomBytes(16).toString("base64url");
 }
 
+/**
+ * Deterministic, domain-separated HMAC-SHA256 under the token secret. Same
+ * inputs give the same bytes on every instance that shares the secret; the
+ * output reveals nothing about the secret. Used for stateless derived ids.
+ */
+export function deriveId(label: string, parts: readonly string[]): Buffer {
+  return createHmac("sha256", secret()).update(`safelabs.derive.v1.${JSON.stringify([label, ...parts])}`).digest();
+}
+
 export function signToken(kind: TokenKind, payload: object): string {
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
   return `${body}.${mac(kind, body).toString("base64url")}`;
