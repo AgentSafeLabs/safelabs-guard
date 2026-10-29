@@ -3,8 +3,10 @@
 // No new decision rules: this only maps client results onto ReconcileInput.
 //
 // Fail closed: a SAM result that did not come from the live API (mock mode or
-// mock fallback after an error) verifies nothing, so samDetectedObjects is []
-// and reconcile() blocks. The mock voice transcript is likewise never fed in.
+// a failed live call, "unavailable") verifies nothing, so samDetectedObjects is
+// [] and reconcile() blocks. The mock voice transcript is likewise never fed
+// in, and a clip that was sent but not transcribed live BLOCKs ("voice
+// unavailable"), as in /api/agent/turn: silence is not a confirmation.
 
 import { createLedger, getExpectedObjects, type LedgerStep } from "../guard/ledger";
 import { reconcile, type GuardVerdict } from "../guard/reconcile";
@@ -54,11 +56,14 @@ export async function runLiveCheck(input: LiveCheckInput): Promise<LiveCheckResu
     const voiceOut = await getVoiceClient().transcribe({ audio: input.audio });
     const voiceLive = voiceOut.source === "live";
     voice = {
-      source: voiceLive ? "live" : "mock",
+      source: voiceOut.source ?? "mock",
       transcript: voiceLive ? voiceOut.transcript : null,
       error: voiceOut.error ?? null,
     };
   }
+
+  // The clip was sent but there is no live transcript: never let that pass as "nothing said".
+  const voiceMissing = Boolean(input.audio) && voice?.transcript === null;
 
   const result = reconcile({
     ledgerState,
@@ -72,9 +77,8 @@ export async function runLiveCheck(input: LiveCheckInput): Promise<LiveCheckResu
     ledgerStep: ledgerState.step,
     expectedObjects: getExpectedObjects(ledgerState.step),
     claimedObject: claim,
-    sam: { source: samLive ? "live" : "mock", verified, error: samOut.error ?? null },
+    sam: { source: samOut.source ?? "mock", verified, error: samOut.error ?? null },
     voice,
-    decision: result.decision,
-    reason: result.reason,
+    ...(voiceMissing ? { decision: "BLOCK", reason: "voice unavailable" } : { decision: result.decision, reason: result.reason }),
   };
 }

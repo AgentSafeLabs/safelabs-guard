@@ -131,20 +131,22 @@ describe("runTurn: perception and action checks", () => {
 
 describe("decide: strict parsing", () => {
   it.each([
-    ["not json", "I think we should ship"],
-    ["prose around json", 'Sure! {"claimedObjects":[],"proposedAction":"SHIP","rationale":"x"}'],
-    ["unknown action", JSON.stringify({ claimedObjects: [], proposedAction: "LAUNCH", rationale: "x" })],
-    ["objects not strings", JSON.stringify({ claimedObjects: [1], proposedAction: "SHIP", rationale: "x" })],
-    ["missing rationale", JSON.stringify({ claimedObjects: [], proposedAction: "SHIP" })],
-    ["array", "[]"],
-  ])("%s becomes HOLD", async (_label, reply) => {
+    ["not json", "I think we should ship", "bad_json"],
+    ["prose around json", 'Sure! {"claimedObjects":[],"proposedAction":"SHIP","rationale":"x"}', "bad_json"],
+    ["unknown action", JSON.stringify({ claimedObjects: [], proposedAction: "LAUNCH", rationale: "x" }), "schema"],
+    ["objects not strings", JSON.stringify({ claimedObjects: [1], proposedAction: "SHIP", rationale: "x" }), "schema"],
+    ["missing rationale", JSON.stringify({ claimedObjects: [], proposedAction: "SHIP" }), "schema"],
+    ["array", "[]", "schema"],
+    ["empty reply", "", "empty"],
+  ])("%s becomes HOLD", async (_label, reply, failure) => {
     expect(parseDecision(reply)).toBeNull();
     const decision = await decide(frameAt("SHIP"), "SHIP", scripted(reply));
     expect(decision).toEqual({
       claimedObjects: [],
       proposedAction: "HOLD",
-      rationale: "unparseable model output",
+      rationale: `reasoning unavailable: spark ${failure}`,
       usedImage: false,
+      failure,
     });
   });
 

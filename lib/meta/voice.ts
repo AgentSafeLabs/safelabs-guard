@@ -17,7 +17,7 @@ export interface VoiceResult {
   confidence: number;
   /** Raw turns from the live API, when available. */
   turns?: unknown[];
-  /** Where this result came from. "mock" with `error` means live failed. */
+  /** Where this result came from. "unavailable" (with `error`, empty transcript) means the live call failed. */
   source?: MetaSource;
   error?: string;
   /** Fixed, safe label when the transcript was discarded (e.g. "transcript not in English"). */
@@ -83,7 +83,6 @@ export function parseVoiceResponse(body: unknown): VoiceResult {
 
 export class LiveVoiceClient implements VoiceClient {
   readonly mode = "live" as const;
-  private readonly fallback = new MockVoiceClient();
 
   constructor(private readonly apiKey: string) {}
 
@@ -110,8 +109,8 @@ export class LiveVoiceClient implements VoiceClient {
       }
       return result;
     } catch (err) {
-      const result = await this.fallback.transcribe(input);
-      return { ...result, source: "mock", error: describeError(err) };
+      // A failed live call is "unavailable": an empty transcript, never the mock's "confirmed".
+      return { transcript: "", confidence: 0, source: "unavailable", error: describeError(err) };
     }
   }
 }

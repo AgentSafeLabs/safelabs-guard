@@ -101,12 +101,12 @@ describe("live-check SAM mapping", () => {
   });
 });
 
-describe("live-check mock fallback (fail closed)", () => {
-  it("live SAM error -> mock fallback is not trusted -> BLOCK, no crash", async () => {
+describe("live-check failed live call (fail closed)", () => {
+  it("live SAM error -> reported unavailable, nothing verified -> BLOCK, no crash", async () => {
     stubMeta({ samStatus: 500 });
     const { status, body, text } = await call({ claim: "red mug" });
     expect(status).toBe(200);
-    expect(body.sam).toEqual({ source: "mock", verified: null, error: "HTTP 500 from /files" });
+    expect(body.sam).toEqual({ source: "unavailable", verified: null, error: "HTTP 500 from /files" });
     expect(body.decision).toBe("BLOCK");
     expect(text).not.toContain(FAKE_KEY);
   });
@@ -136,11 +136,19 @@ describe("live-check voice", () => {
     expect(body.reason).toMatch(/Injection attempt detected: voice transcript/);
   });
 
-  it("voice error falls back to mock and its transcript is not used", async () => {
+  it("voice error is reported unavailable, no transcript is invented, and silence is not a confirmation: BLOCK", async () => {
     stubMeta({ boxes: 1, voiceStatus: 503 });
     const { body } = await call({ claim: "red mug", audio: WAV });
-    expect(body.voice).toMatchObject({ source: "mock", transcript: null });
+    expect(body.voice).toMatchObject({ source: "unavailable", transcript: null });
     expect(body.voice.error).toMatch(/^HTTP 503 from \/asr\/transcribe/);
+    expect(body.decision).toBe("BLOCK");
+    expect(body.reason).toBe("voice unavailable");
+  });
+
+  it("no clip sent: unchanged, a verified object still ALLOWs", async () => {
+    stubMeta({ boxes: 1 });
+    const { body } = await call({ claim: "red mug" });
+    expect(body.voice).toBeNull();
     expect(body.decision).toBe("ALLOW");
   });
 });

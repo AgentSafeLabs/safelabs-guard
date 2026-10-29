@@ -31,7 +31,7 @@ export interface SamResult {
   detections: SamDetection[];
   /** Any text visible in the frame, passed to injection checks. */
   imageText: string;
-  /** Where this result came from. "mock" with `error` means live failed. */
+  /** Where this result came from. "unavailable" (with `error`, no detections) means the live call failed. */
   source?: MetaSource;
   error?: string;
 }
@@ -170,7 +170,6 @@ async function readSamStream(res: Response): Promise<SamStreamParse> {
 
 export class LiveSamClient implements SamClient {
   readonly mode = "live" as const;
-  private readonly fallback = new MockSamClient();
 
   constructor(private readonly apiKey: string) {}
 
@@ -188,8 +187,8 @@ export class LiveSamClient implements SamClient {
       // SAM does not read frame text, so live imageText is empty.
       return { detections, imageText: "", source: "live" };
     } catch (err) {
-      const result = await this.fallback.segment(input);
-      return { ...result, source: "mock", error: describeError(err) };
+      // A failed live call is "unavailable": no detections, never the mock's.
+      return { detections: [], imageText: "", source: "unavailable", error: describeError(err) };
     }
   }
 

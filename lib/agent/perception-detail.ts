@@ -21,6 +21,13 @@ export const PERCEPTION_DETAILS = [
   "voice error",
   "transcript not in English",
   "spark error",
+  "spark timeout",
+  "spark http_429",
+  "spark http_5xx",
+  "spark network",
+  "spark bad_json",
+  "spark schema",
+  "spark empty",
   "spark not consulted: perception failed closed",
   "not consulted: perception failed closed",
 ] as const;

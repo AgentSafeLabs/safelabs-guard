@@ -17,6 +17,7 @@ import { join } from "node:path";
 import { describeError, metaFetch, MetaApiError } from "../meta/http";
 import { parseSamStream } from "../meta/sam";
 import { SPARK_MODEL } from "../meta/spark";
+import { extraPasses as defaultExtraPasses, extraPassesEnabled, type ExtraPasses } from "./ocr-preprocess";
 import { redact } from "./redact";
 import type { Observation } from "./types";
 
@@ -129,13 +130,24 @@ const OCR_DATA_DIR = "4.0.0_best_int";
 export interface OcrWorker {
   recognize(image: Buffer): Promise<{ data: { text?: unknown; confidence?: unknown } }>;
   terminate(): Promise<unknown>;
+  /** Used to switch the page segmentation mode between passes; fakes may omit it. */
+  setParameters?(params: Record<string, string>): Promise<unknown>;
 }
 
 export type OcrWorkerFactory = () => Promise<OcrWorker | null | undefined>;
 
+/** tesseract.js's own default page segmentation mode (PSM.SINGLE_BLOCK), which the base pass relies on. */
+export const TESSERACT_JS_DEFAULT_PSM = "6";
+
 export interface OcrOptions {
   createWorker?: OcrWorkerFactory;
   timeoutMs?: number;
+  /**
+   * Extra reading passes (greyscale, sparse layout, crop to the sign). Default:
+   * on with the real tesseract worker unless SAFELABS_OCR_PASSES=off, off with
+   * an injected worker. `false` turns them off.
+   */
+  extraPasses?: ExtraPasses | false;
 }
 
 /**
@@ -213,6 +225,10 @@ export function cleanOcrText(raw: string): string {
   return Array.from(cleaned).slice(0, OCR_MAX_TEXT).join("");
 }
 
+function roundConfidence(confidence: unknown): number {
+  return typeof confidence === "number" && Number.isFinite(confidence) ? Math.round(confidence * 10) / 10 : 0;
+}
+
 function ocrFailure(detail: string): VisionExtract {
   return { visibleText: "", ok: false, error: detail, perceptionDetail: detail };
 }
@@ -221,6 +237,7 @@ export class OcrVisionClient implements ImageUnderstanding {
   readonly name = "ocr" as const;
   private readonly createWorker: OcrWorkerFactory;
   private readonly timeoutMs: number;
+  private readonly extraPasses: ExtraPasses | null;
   private worker: Promise<OcrWorker> | null = null;
   /** Tail of the job queue: one recognition at a time per instance. */
   private queue: Promise<unknown> = Promise.resolve();
@@ -228,6 +245,10 @@ export class OcrVisionClient implements ImageUnderstanding {
   constructor(options: OcrOptions = {}) {
     this.createWorker = options.createWorker ?? createTesseractWorker;
     this.timeoutMs = options.timeoutMs ?? OCR_TIMEOUT_MS;
+    this.extraPasses =
+      options.extraPasses === false
+        ? null
+        : options.extraPasses ?? (this.createWorker === createTesseractWorker && extraPassesEnabled() ? defaultExtraPasses : null);
   }
 
   available(): boolean {
@@ -272,6 +293,47 @@ export class OcrVisionClient implements ImageUnderstanding {
     void this.close();
   }
 
+  /**
+   * Best-effort extra passes after the unmodified frame has been read. They run
+   * inside the same deadline. A pass that fails or runs out of time is dropped
+   * (and a worker that timed out is replaced); the text already read is kept.
+   */
+  private async readExtraPasses(bytes: Buffer, deadline: number): Promise<{ text: string; confidence: number }[]> {
+    const read: { text: string; confidence: number }[] = [];
+    try {
+      const passes = (await this.extraPasses?.(bytes)) ?? [];
+      const worker = await this.getWorker();
+      for (const pass of passes) {
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) break;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const timeout = new Promise<"timeout">((resolve) => {
+          timer = setTimeout(() => resolve("timeout"), remaining);
+        });
+        try {
+          await worker.setParameters?.({ tessedit_pageseg_mode: String(pass.psm) });
+          const outcome = await Promise.race([worker.recognize(pass.image), timeout]);
+          if (outcome === "timeout") {
+            this.discardWorker();
+            break;
+          }
+          const { text, confidence } = outcome?.data ?? {};
+          if (typeof text === "string") read.push({ text: cleanOcrText(text), confidence: roundConfidence(confidence) });
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+    } catch {
+      // A broken extra pass must not cost the read that already succeeded.
+      this.discardWorker();
+    } finally {
+      // The worker is shared: put the page mode back, or the next frame's
+      // production pass would no longer be the production pass.
+      void this.worker?.then((w) => w.setParameters?.({ tessedit_pageseg_mode: TESSERACT_JS_DEFAULT_PSM })).catch(() => {});
+    }
+    return read;
+  }
+
   private async recognizeBy(bytes: Buffer, deadline: number): Promise<VisionExtract> {
     const remaining = deadline - Date.now();
     if (remaining <= 0) return ocrFailure("ocr timeout");
@@ -290,10 +352,17 @@ export class OcrVisionClient implements ImageUnderstanding {
         this.discardWorker();
         return ocrFailure("ocr error");
       }
+      const base = { text: cleanOcrText(text), confidence: roundConfidence(confidence) };
+      const extra = this.extraPasses ? await this.readExtraPasses(bytes, deadline) : [];
+      const texts: string[] = [];
+      for (const t of [base.text, ...extra.map((e) => e.text)]) {
+        const key = t.toLowerCase().replace(/\s+/g, " ");
+        if (key && !texts.some((seen) => seen.toLowerCase().replace(/\s+/g, " ") === key)) texts.push(t);
+      }
       return {
-        visibleText: cleanOcrText(text),
+        visibleText: cleanOcrText(texts.join(" ")),
         ok: true,
-        confidence: typeof confidence === "number" && Number.isFinite(confidence) ? Math.round(confidence * 10) / 10 : 0,
+        confidence: Math.max(base.confidence, ...extra.map((e) => e.confidence)),
       };
     } catch {
       this.discardWorker();

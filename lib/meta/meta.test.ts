@@ -139,7 +139,7 @@ describe("SAM box-record parsing", () => {
       String(url).endsWith("/files") ? json({ id: "f" }) : sse([{ type: "response.output_text.delta", delta: "<|box;1|>" }]),
     );
     const result = await new LiveSamClient(FAKE_KEY).segment({ frame: PNG, concepts: ["red mug"] });
-    expect(result.source).toBe("mock");
+    expect(result).toMatchObject({ source: "unavailable", detections: [] });
     expect(result.error).toMatch(/response.completed/);
   });
 });
@@ -166,51 +166,70 @@ describe("Voice transcript parsing", () => {
   });
 });
 
-describe("mock fallback", () => {
-  it("falls back on network failure without throwing", async () => {
+describe("failed live call: unavailable, never data", () => {
+  it("returns no data on network failure, without throwing", async () => {
     fetchMock.mockRejectedValue(new TypeError("fetch failed"));
     const claim = await new LiveSparkClient(FAKE_KEY).reason({ orderId: "ORDER-1042", step: "SEAL" });
-    const expected = await new MockSparkClient().reason({ orderId: "ORDER-1042", step: "SEAL" });
-    expect(claim).toEqual({ ...expected, source: "mock", error: "fetch failed" });
+    expect(claim).toEqual({ objects: [], proposedAction: "HOLD", rationale: "", source: "unavailable", error: "fetch failed" });
 
     const sam = await new LiveSamClient(FAKE_KEY).segment({ frame: PNG, concepts: ["red mug"] });
-    expect(sam).toEqual({
-      ...(await new MockSamClient().segment({ frame: PNG, concepts: ["red mug"] })),
-      source: "mock",
-      error: "fetch failed",
-    });
+    expect(sam).toEqual({ detections: [], imageText: "", source: "unavailable", error: "fetch failed" });
 
     const voice = await new LiveVoiceClient(FAKE_KEY).transcribe({ audio: WAV, mockTranscript: "confirmed" });
-    expect(voice).toEqual({
-      ...(await new MockVoiceClient().transcribe({ audio: WAV, mockTranscript: "confirmed" })),
-      source: "mock",
-      error: "fetch failed",
-    });
+    expect(voice).toEqual({ transcript: "", confidence: 0, source: "unavailable", error: "fetch failed" });
   });
 
-  it.each([401, 429, 500])("falls back on HTTP %i and never leaks the key", async (status) => {
+  it.each([401, 429, 500])("returns no data on HTTP %i and never leaks the key", async (status) => {
     fetchMock.mockResolvedValue(json({ error: "nope" }, status));
     const claim = await new LiveSparkClient(FAKE_KEY).reason({ orderId: "ORDER-1042", step: "SEAL" });
-    expect(claim.source).toBe("mock");
+    expect(claim).toMatchObject({ source: "unavailable", objects: [] });
     expect(claim.error).toBe(`HTTP ${status} from /chat/completions`);
     expect(JSON.stringify(claim)).not.toContain(FAKE_KEY);
   });
 
-  it("falls back on timeout", async () => {
+  it("returns no data on timeout", async () => {
     const timeout = new DOMException("The operation was aborted due to timeout", "TimeoutError");
     fetchMock.mockRejectedValue(timeout);
     const voice = await new LiveVoiceClient(FAKE_KEY).transcribe({ audio: WAV });
-    expect(voice).toMatchObject({ source: "mock", error: "Timed out after 10000ms" });
+    expect(voice).toMatchObject({ source: "unavailable", transcript: "", error: "Timed out after 10000ms" });
   });
 
-  it("falls back on unparseable responses and mock:// media", async () => {
+  it("returns no data on unparseable responses and mock:// media", async () => {
     fetchMock.mockResolvedValue(json({ choices: [{ message: { content: "I see a mug" } }] }));
     const claim = await new LiveSparkClient(FAKE_KEY).reason({ orderId: "ORDER-1042", step: "SEAL" });
-    expect(claim).toMatchObject({ source: "mock", error: expect.stringMatching(/parse failure/) });
+    expect(claim).toMatchObject({ source: "unavailable", objects: [], error: expect.stringMatching(/parse failure/) });
 
     const sam = await new LiveSamClient(FAKE_KEY).segment({ frame: "mock://asi-mm/A1", concepts: ["red mug"] });
-    expect(sam).toMatchObject({ source: "mock", error: expect.stringMatching(/Unsupported media/) });
+    expect(sam).toMatchObject({ source: "unavailable", detections: [], error: expect.stringMatching(/Unsupported media/) });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("a failed call never carries the mock client's data, for any concept list", async () => {
+    fetchMock.mockResolvedValue(json({}, 500));
+    const mock = await new MockSamClient().segment({ frame: PNG, concepts: ["red mug", "blue notebook"] });
+    expect(mock.detections.length).toBeGreaterThan(0); // the thing that must not leak
+    const sam = await new LiveSamClient(FAKE_KEY).segment({ frame: PNG, concepts: ["red mug", "blue notebook"] });
+    expect(sam.detections).toEqual([]);
+    const voice = await new LiveVoiceClient(FAKE_KEY).transcribe({ audio: WAV });
+    expect(voice.transcript).toBe("");
+    expect(voice.transcript).not.toBe((await new MockVoiceClient().transcribe({ audio: WAV })).transcript);
+  });
+
+  it("a mid-way failure drops detections found by earlier concepts", async () => {
+    let responses = 0;
+    fetchMock.mockImplementation(async (url) => {
+      if (String(url).endsWith("/files")) return json({ id: "f" });
+      responses++;
+      return responses === 1 ? sse(samEvents("<|box;1,2,3,4|>")) : json({}, 500); // 400 ms retry also fails
+    });
+    const sam = await new LiveSamClient(FAKE_KEY).segment({ frame: PNG, concepts: ["red mug", "blue notebook"] });
+    expect(sam).toMatchObject({ source: "unavailable", detections: [] });
+  });
+
+  it("the mock clients still say mock", async () => {
+    expect((await new MockSparkClient().reason({ orderId: "ORDER-1042", step: "SEAL" })).source).toBe("mock");
+    expect((await new MockSamClient().segment({ frame: PNG, concepts: ["red mug"] })).source).toBe("mock");
+    expect((await new MockVoiceClient().transcribe({ audio: WAV })).source).toBe("mock");
   });
 });
 

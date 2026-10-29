@@ -7,7 +7,7 @@ import { guardAction } from "../guard/action-gate";
 import { createLedger, getExpectedObjects, type LedgerState } from "../guard/ledger";
 import { describeError } from "../meta/http";
 import type { SamClient, SamResult } from "../meta/sam";
-import { buildDetectedObjects, decide, type ReasoningClient } from "./packproof";
+import { buildDetectedObjects, decide, type ReasoningClient, type SparkRetryPolicy } from "./packproof";
 import { safeDetail } from "./perception-detail";
 import { redact } from "./redact";
 import { executeGuarded, executeUnguarded } from "./tools";
@@ -42,6 +42,8 @@ export interface RunTurnOptions {
    * told about. Default: the step's expected objects plus 2 DISTRACTORS.
    */
   concepts?: readonly string[];
+  /** One bounded retry of the reasoning call. Same in both modes; omitted = no retry. */
+  sparkRetry?: SparkRetryPolicy;
 }
 
 export function createSession(ledger: LedgerState = createLedger()): PackSession {
@@ -158,7 +160,11 @@ export async function runTurn(
   }
 
   // 2. Decide. Same input in both modes: only the action gate below differs.
-  const decision = await decide(observation, step, reasoning, { visibleText: imageText, detectedObjects });
+  const decision = await decide(observation, step, reasoning, {
+    visibleText: imageText,
+    detectedObjects,
+    retry: options.sparkRetry,
+  });
 
   // 3. Act.
   if (!guarded) {

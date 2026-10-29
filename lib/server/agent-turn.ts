@@ -19,7 +19,7 @@ import { getVoiceClient, MockVoiceClient } from "../meta/voice";
 import { isShipAllowance, signApproval } from "../agent/approval";
 import { isTimeout, safeDetail, type PerceptionDetail } from "../agent/perception-detail";
 import { scanForInjection, type ScanInput, type SecurityEvent } from "../agent/security-events";
-import { getReasoningClient, SparkReasoningClient } from "../agent/packproof";
+import { getReasoningClient, sparkFailureDetail, SparkReasoningClient, type SparkRetryPolicy } from "../agent/packproof";
 import { redact } from "../agent/redact";
 import { runTurn } from "../agent/run";
 import { freshSessionState, sessionFromState, signSession, verifySession, type SessionState } from "../agent/session-token";
@@ -31,6 +31,8 @@ import { checkRate, clientIp, consumeLiveBudget, isLiveDisabled } from "./rate-l
 export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 /** Unordered objects SAM is also asked about on every turn. */
 export const ROUTE_DISTRACTORS = ["banana", "laptop"] as const;
+/** No Spark retry once a turn has run this long: the route's maxDuration is 60 s. */
+export const SPARK_RETRY_DEADLINE_MS = 35_000;
 
 export type SourceLabel = "live" | "mock" | "unavailable";
 export type SourceName = "sam" | "vision" | "voice" | "spark";
@@ -93,7 +95,7 @@ class ParallelConceptSam implements SamClient {
     const results = await Promise.all(
       concepts.map((concept) =>
         this.base.segment({ frame: input.frame, concepts: [concept] }).catch(
-          (): SamResult => ({ detections: [], imageText: "", source: "mock", error: "SAM call failed" }),
+          (): SamResult => ({ detections: [], imageText: "", source: "unavailable", error: "SAM call failed" }),
         ),
       ),
     );
@@ -109,10 +111,10 @@ class ParallelConceptSam implements SamClient {
             ? "sam error"
             : "sam not live";
     return {
-      // Only live results count: a failed call's detections are the mock fallback's guesses.
+      // Only live results count (a failed call carries no detections anyway).
       detections: results.flatMap((r, i) => (r.error || r.source !== "live" ? [] : r.detections.filter((d) => d.label === concepts[i]))),
       imageText: "",
-      source: failed ? "mock" : "live",
+      source: failed ? "unavailable" : "live",
       // The fixed label, not the upstream text: it ends up in the guard's block reason.
       error: failed ? this.detail ?? "sam error" : undefined,
     };
@@ -207,6 +209,7 @@ export interface TurnDeps {
 const DEFAULT_DEPS: TurnDeps = { scan: scanForInjection };
 
 export async function handleTurn(request: Request, deps: TurnDeps = DEFAULT_DEPS): Promise<Response> {
+  const startedAt = Date.now();
   const rate = checkRate(clientIp(request));
   if (!rate.allowed) {
     return jsonError(429, "Too many requests", {}, { "Retry-After": String(rate.retryAfter) });
@@ -320,14 +323,31 @@ export async function handleTurn(request: Request, deps: TurnDeps = DEFAULT_DEPS
 
     const sam = new ParallelConceptSam(baseSam, concepts);
     let record: TurnRecord;
+    let sparkUnavailable: PerceptionDetail | null = null;
     if (mode === "guarded" && audio && voiceSource === "unavailable") {
       record = blockedRecord(turnNumber, mode, step, observation, "voice unavailable", session.shipped);
     } else {
-      record = await runTurn(session, observation, { mode, sam, vision, reasoning, requireLive: !mockMode, concepts });
+      // One retry of a failed Spark call, in both modes. It spends one more
+      // unit of the daily budget, and is skipped late in the turn or when the
+      // budget is gone: the turn then fails closed (HOLD) as before.
+      const sparkRetry: SparkRetryPolicy | undefined = sparkLive
+        ? { allow: () => Date.now() - startedAt < SPARK_RETRY_DEADLINE_MS && consumeLiveBudget(1) }
+        : undefined;
+      record = await runTurn(session, observation, {
+        mode,
+        sam,
+        vision,
+        reasoning,
+        requireLive: !mockMode,
+        concepts,
+        sparkRetry,
+      });
       record = { ...record, turn: turnNumber };
       if (record.sparkDecision.rationale.startsWith("reasoning unavailable")) {
-        // decide() puts the upstream error text here; return only a fixed label.
-        record = { ...record, sparkDecision: { ...record.sparkDecision, rationale: "reasoning unavailable: spark error" } };
+        // decide() already wrote a fixed label; rebuild it from the failure class
+        // so nothing but an allow-listed string is ever returned.
+        sparkUnavailable = sparkFailureDetail(record.sparkDecision.failure ?? "error");
+        record = { ...record, sparkDecision: { ...record.sparkDecision, rationale: `reasoning unavailable: ${sparkUnavailable}` } };
       }
     }
 
@@ -366,7 +386,7 @@ export async function handleTurn(request: Request, deps: TurnDeps = DEFAULT_DEPS
     if (sources.spark === "unavailable") {
       perceptionDetail.spark = record.sparkDecision.rationale.startsWith("not consulted")
         ? "spark not consulted: perception failed closed"
-        : "spark error";
+        : sparkUnavailable ?? "spark error";
     }
 
     // Display only, after the decision and action are final. Guarded: every

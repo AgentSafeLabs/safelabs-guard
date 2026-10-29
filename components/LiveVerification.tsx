@@ -5,12 +5,15 @@
 
 import { useState, type FormEvent } from "react";
 import type { LiveCheckResult } from "@/lib/live/check";
+import type { MetaSource } from "@/lib/meta/http";
 
-function SourceBadge({ source }: { source: "live" | "mock" }) {
+function SourceBadge({ source }: { source: MetaSource }) {
   const tone =
     source === "live"
       ? "border-emerald-600 bg-emerald-950 text-emerald-200"
-      : "border-amber-600 bg-amber-950 text-amber-200";
+      : source === "unavailable"
+        ? "border-red-600 bg-red-950 text-red-200"
+        : "border-amber-600 bg-amber-950 text-amber-200";
   return (
     <span className={`rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase ${tone}`}>{source}</span>
   );
@@ -101,7 +104,9 @@ export default function LiveVerification() {
           <Row label="SAM 3.1">
             <SourceBadge source={result.sam.source} />
             {result.sam.verified === null ? (
-              <span className="text-amber-300">not verified live (mock result ignored)</span>
+              <span className="text-amber-300">
+                {result.sam.source === "unavailable" ? "live call failed: nothing verified" : "not verified live (mock result ignored)"}
+              </span>
             ) : (
               <span className="font-mono">verified: {String(result.sam.verified)}</span>
             )}
@@ -111,7 +116,9 @@ export default function LiveVerification() {
             <Row label="Voice">
               <SourceBadge source={result.voice.source} />
               {result.voice.transcript === null ? (
-                <span className="text-amber-300">not transcribed live</span>
+                <span className="text-amber-300">
+                  {result.voice.source === "unavailable" ? "live call failed: nothing transcribed" : "not transcribed live"}
+                </span>
               ) : (
                 <span className="font-mono">
                   {result.voice.transcript ? `"${result.voice.transcript}"` : "(silence)"}

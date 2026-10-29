@@ -14,11 +14,19 @@
 
 import { legalActionFor } from "../guard/action-gate";
 import { getExpectedObjects, ORDER_1042, STEPS, type LedgerStep } from "../guard/ledger";
-import { describeError, metaFetch, MetaApiError, shouldUseLive } from "../meta/http";
+import { metaFetch, MetaApiError, shouldUseLive } from "../meta/http";
 import type { SamDetection } from "../meta/sam";
 import { MockSparkClient, SPARK_MODEL, type SparkClient } from "../meta/spark";
+import type { PerceptionDetail } from "./perception-detail";
 import { redact } from "./redact";
-import { AGENT_ACTIONS, type AgentAction, type DetectedObject, type Observation, type SparkDecision } from "./types";
+import {
+  AGENT_ACTIONS,
+  type AgentAction,
+  type DetectedObject,
+  type Observation,
+  type SparkDecision,
+  type SparkFailure,
+} from "./types";
 import { cleanOcrText } from "./vision";
 
 export type ReasoningContentPart =
@@ -147,29 +155,100 @@ export function buildPerceptionReport(input: {
   };
 }
 
-const HOLD_UNPARSEABLE = "unparseable model output";
+/** Failures that one more try can plausibly fix. 401/400 and the like are not retried. */
+const RETRYABLE: ReadonlySet<SparkFailure> = new Set<SparkFailure>([
+  "timeout",
+  "http_429",
+  "http_5xx",
+  "network",
+  "bad_json",
+  "schema",
+  "empty",
+]);
 
-function hold(rationale: string, usedImage: boolean): SparkDecision {
-  return { claimedObjects: [], proposedAction: "HOLD", rationale, usedImage };
+/** Pause before the single retry. */
+export const SPARK_RETRY_DELAY_MS = 400;
+
+/** A Spark reply that arrived but cannot be used. Carries only a fixed label. */
+export class SparkReplyError extends Error {
+  constructor(readonly failure: SparkFailure) {
+    super(`Spark reply unusable: ${failure}`);
+    this.name = "SparkReplyError";
+  }
 }
 
-/** Strict parse: the whole reply (optionally in one ```json fence) must match the schema. */
-export function parseDecision(raw: string): Omit<SparkDecision, "usedImage"> | null {
+/**
+ * Maps whatever a Spark call threw onto one fixed label. Reads only the error's
+ * type, name and HTTP status: never its message, so an upstream body, a key or
+ * a URL cannot reach the label.
+ */
+export function classifySparkFailure(err: unknown): SparkFailure {
+  if (err instanceof SparkReplyError) return err.failure;
+  if (err instanceof MetaApiError) {
+    if (err.status === 429) return "http_429";
+    if (err.status !== undefined && err.status >= 500) return "http_5xx";
+    return "error";
+  }
+  if (err instanceof Error) {
+    if (err.name === "TimeoutError" || err.name === "AbortError") return "timeout";
+    if (err instanceof SyntaxError) return "bad_json";
+    if (err instanceof TypeError) return "network";
+  }
+  return "error";
+}
+
+/** The allow-listed PerceptionDetail for a failure ("spark timeout", ..., "spark error"). */
+export function sparkFailureDetail(failure: SparkFailure): PerceptionDetail {
+  return failure === "error" ? "spark error" : (`spark ${failure}` as PerceptionDetail);
+}
+
+export interface SparkRetryPolicy {
+  /** Asked before the one retry. Return false to skip it (budget spent, no time left). */
+  allow?: () => boolean;
+  delayMs?: number;
+  /** Tests: replaces the real pause. */
+  sleep?: (ms: number) => Promise<void>;
+}
+
+function hold(failure: SparkFailure, usedImage: boolean): SparkDecision {
+  // Fixed text only: the rationale ends up in the turn record and the response.
+  return {
+    claimedObjects: [],
+    proposedAction: "HOLD",
+    rationale: `reasoning unavailable: ${sparkFailureDetail(failure)}`,
+    usedImage,
+    failure,
+  };
+}
+
+type ParsedDecision = { ok: true; value: Omit<SparkDecision, "usedImage"> } | { ok: false; failure: SparkFailure };
+
+/** Strict parse. Says why it failed: not JSON ("bad_json"), JSON of the wrong shape ("schema"), nothing at all ("empty"). */
+export function parseDecisionDetailed(raw: string): ParsedDecision {
+  if (typeof raw !== "string" || raw.trim() === "") return { ok: false, failure: "empty" };
   const unfenced = raw.trim().replace(/^```(?:json)?\s*([\s\S]*?)\s*```$/i, "$1");
   let parsed: unknown;
   try {
     parsed = JSON.parse(unfenced);
   } catch {
-    return null;
+    return { ok: false, failure: "bad_json" };
   }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return { ok: false, failure: "schema" };
   const { claimedObjects, proposedAction, rationale } = parsed as Record<string, unknown>;
-  if (!Array.isArray(claimedObjects) || !claimedObjects.every((o) => typeof o === "string")) return null;
-  if (typeof proposedAction !== "string" || !(AGENT_ACTIONS as readonly string[]).includes(proposedAction)) {
-    return null;
+  if (!Array.isArray(claimedObjects) || !claimedObjects.every((o) => typeof o === "string")) {
+    return { ok: false, failure: "schema" };
   }
-  if (typeof rationale !== "string") return null;
-  return { claimedObjects, proposedAction: proposedAction as AgentAction, rationale };
+  if (typeof proposedAction !== "string" || !(AGENT_ACTIONS as readonly string[]).includes(proposedAction)) {
+    return { ok: false, failure: "schema" };
+  }
+  if (typeof rationale !== "string") return { ok: false, failure: "schema" };
+  return { ok: true, value: { claimedObjects, proposedAction: proposedAction as AgentAction, rationale } };
+}
+
+/** Strict parse: the whole reply (optionally in one ```json fence) must match the schema. */
+export function parseDecision(raw: string): Omit<SparkDecision, "usedImage"> | null {
+  const parsed = parseDecisionDetailed(raw);
+  return parsed.ok ? parsed.value : null;
 }
 
 export function buildMessages(
@@ -203,7 +282,7 @@ export async function decide(
   observation: Observation,
   ledgerStep: LedgerStep,
   client: ReasoningClient,
-  extras: { visibleText?: string; detectedObjects?: readonly DetectedObject[] } = {},
+  extras: { visibleText?: string; detectedObjects?: readonly DetectedObject[]; retry?: SparkRetryPolicy } = {},
 ): Promise<SparkDecision> {
   const perception = buildPerceptionReport({
     detectedObjects: extras.detectedObjects,
@@ -219,15 +298,22 @@ export async function decide(
     visibleText: perception.frameText,
     frameHint: observation.frameHint,
   };
-  let raw: string;
-  try {
-    raw = await client.complete(request);
-  } catch (err) {
-    return hold(redact(`reasoning unavailable: ${describeError(err)}`), usedImage);
+  // At most one retry, and only when `retry` is given (the route passes it for
+  // both modes). A second failure is a HOLD: Spark is advisory, so failing
+  // closed here never needs the guard's help.
+  const retry = extras.retry;
+  for (let attempt = 0; ; attempt++) {
+    let failure: SparkFailure;
+    try {
+      const parsed = parseDecisionDetailed(await client.complete(request));
+      if (parsed.ok) return { ...parsed.value, rationale: redact(parsed.value.rationale), usedImage };
+      failure = parsed.failure;
+    } catch (err) {
+      failure = classifySparkFailure(err);
+    }
+    if (attempt > 0 || !retry || !RETRYABLE.has(failure) || retry.allow?.() === false) return hold(failure, usedImage);
+    await (retry.sleep ?? ((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms))))(retry.delayMs ?? SPARK_RETRY_DELAY_MS);
   }
-  const parsed = parseDecision(raw);
-  if (!parsed) return hold(HOLD_UNPARSEABLE, usedImage);
-  return { ...parsed, rationale: redact(parsed.rationale), usedImage };
 }
 
 /**
@@ -270,11 +356,17 @@ export class SparkReasoningClient implements ReasoningClient {
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ model: SPARK_MODEL, ...SPARK_REASONING_PARAMS, messages: this.messagesFor(request) }),
     });
-    const body = (await res.json()) as { choices?: { message?: { content?: unknown } }[] };
-    const content = body?.choices?.[0]?.message?.content;
-    if (typeof content !== "string") {
-      throw new MetaApiError("Spark parse failure: missing choices[0].message.content");
+    let body: { choices?: { message?: { content?: unknown } }[] };
+    try {
+      body = (await res.json()) as typeof body;
+    } catch (err) {
+      // A timeout that fires while the body streams is still a timeout.
+      if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) throw err;
+      throw new SparkReplyError("bad_json");
     }
+    const content = body?.choices?.[0]?.message?.content;
+    if (typeof content !== "string") throw new SparkReplyError("schema");
+    if (content.trim() === "") throw new SparkReplyError("empty");
     return content;
   }
 

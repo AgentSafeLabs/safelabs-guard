@@ -19,7 +19,7 @@ export interface SparkClaim {
   /** Action Spark proposes next, e.g. "SEAL_BOX". */
   proposedAction: string;
   rationale: string;
-  /** Where this claim came from. "mock" with `error` means live failed. */
+  /** Where this claim came from. "unavailable" (with `error`, no objects) means the live call failed. */
   source?: MetaSource;
   error?: string;
 }
@@ -86,7 +86,6 @@ export function parseSparkResponse(body: unknown): SparkClaim {
 
 export class LiveSparkClient implements SparkClient {
   readonly mode = "live" as const;
-  private readonly fallback = new MockSparkClient();
 
   constructor(private readonly apiKey: string) {}
 
@@ -115,8 +114,9 @@ export class LiveSparkClient implements SparkClient {
       });
       return parseSparkResponse(await res.json());
     } catch (err) {
-      const claim = await this.fallback.reason(input);
-      return { ...claim, source: "mock", error: describeError(err) };
+      // A failed live call is "unavailable", never a mock claim: no objects, and
+      // HOLD as the only action it could ever suggest.
+      return { objects: [], proposedAction: "HOLD", rationale: "", source: "unavailable", error: describeError(err) };
     }
   }
 }

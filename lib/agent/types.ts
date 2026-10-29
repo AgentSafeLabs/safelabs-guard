@@ -24,12 +24,20 @@ export interface DetectedObject {
   confidence: number;
 }
 
+/** Why a Spark call produced no usable decision. "error" is anything else (401, 400, ...). */
+export type SparkFailure = "timeout" | "http_429" | "http_5xx" | "network" | "bad_json" | "schema" | "empty" | "error";
+
 export interface SparkDecision {
   claimedObjects: string[];
   proposedAction: AgentAction;
   rationale: string;
   /** True only when the frame was actually sent to the reasoning model. */
   usedImage: boolean;
+  /**
+   * Set only when the model could not be consulted or its reply was unusable
+   * (the decision is then a HOLD). A fixed label, never upstream text.
+   */
+  failure?: SparkFailure;
 }
 
 export type AgentMode = "guarded" | "unguarded";

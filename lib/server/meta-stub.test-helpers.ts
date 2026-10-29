@@ -4,6 +4,7 @@
 import { vi } from "vitest";
 import { legalActionFor } from "../guard/action-gate";
 import type { LedgerStep } from "../guard/ledger";
+import { SAM_PROMPT_ALIASES } from "../meta/sam";
 
 export const SECRET = "test-secret-not-real-0123456789abcdef";
 export const FAKE_KEY = "test-key-not-real-abc123";
@@ -62,7 +63,9 @@ export function stubMeta(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>, scen
     if (url.endsWith("/files")) return s.samStatus ? json({}, s.samStatus) : json({ id: "file-1" });
     if (url.endsWith("/responses")) {
       const body = JSON.parse(String(init?.body));
-      const concept = body.input[0].content[0].text as string;
+      // SAM is prompted with an alias for some labels ("usb cable" for "usb-c cable").
+      const prompt = body.input[0].content[0].text as string;
+      const concept = Object.entries(SAM_PROMPT_ALIASES).find(([, alias]) => alias === prompt)?.[0] ?? prompt;
       return samStream(s.objects.includes(concept) ? 1 : 0);
     }
     if (url.includes("/asr/transcribe")) return json({ transcript: s.transcript ?? "confirmed", turns: [] });

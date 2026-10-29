@@ -5,7 +5,11 @@
 export const META_BASE_URL = "https://api.meta.ai/v1";
 export const META_TIMEOUT_MS = 10_000;
 
-export type MetaSource = "live" | "mock";
+/**
+ * "live": the API answered. "mock": a mock client produced the data on purpose.
+ * "unavailable": a live call failed; the result carries no data, only `error`.
+ */
+export type MetaSource = "live" | "mock" | "unavailable";
 
 /** Live only when SAFELABS_USE_MOCKS=false AND the client's key is set. */
 export function shouldUseLive(apiKey: string | undefined): apiKey is string {
@@ -36,7 +40,7 @@ export async function metaFetch(path: string, apiKey: string, init: RequestInit 
 
 /**
  * Loads a frame/audio reference (data URI or http(s) URL) as a Blob.
- * mock:// and other schemes are rejected, which sends the caller to its mock.
+ * mock:// and other schemes are rejected, so the live call fails (unavailable).
  */
 export async function loadBinary(ref: string): Promise<Blob> {
   const dataUri = /^data:([^;,]+)?(;base64)?,([\s\S]*)$/.exec(ref);
