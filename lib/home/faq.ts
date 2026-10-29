@@ -35,6 +35,11 @@ export const FAQ: readonly FaqItem[] = [
     answer: "English only. Other languages are blocked as a safe default.",
   },
   {
+    question: "Do you store my camera images or audio?",
+    answer:
+      "No. The server does not save your images or audio. Each is processed to answer that one request and then discarded. What you send to Meta's models is covered by Meta's own terms.",
+  },
+  {
     question: "Can it verify my own products?",
     answer:
       "The guard compares each proposal with an order ledger, so a different order means a different ledger. The live demo uses one fixed order, and we have only tested those three items.",

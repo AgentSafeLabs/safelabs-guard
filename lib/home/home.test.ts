@@ -13,6 +13,7 @@ const QUESTIONS = [
   "Is the shipment real?",
   "What did it catch in testing, and what didn't it?",
   "Which languages does voice support?",
+  "Do you store my camera images or audio?",
   "Can it verify my own products?",
   "Is it only for e-commerce?",
 ];
@@ -71,18 +72,18 @@ describe("home page /", () => {
     }
   });
 
-  it("has exactly 8 FAQ items with the exact questions, the first open", () => {
+  it("has exactly 9 FAQ items with the exact questions, the first open", () => {
     const items = [...page.matchAll(/<details[^>]*data-faq-item[^>]*>(.*?)<\/details>/gs)];
-    expect(items).toHaveLength(8);
+    expect(items).toHaveLength(9);
     const questions = items.map((m) => text(/<summary[^>]*>(.*?)<\/summary>/s.exec(m[1])![1]).trim());
     expect(questions).toEqual(QUESTIONS);
     expect(FAQ.map((f) => f.question)).toEqual(QUESTIONS);
     const open = [...page.matchAll(/<details([^>]*)data-faq-item/g)].map((m) => /\sopen(=|\s|$)/.test(m[1]));
-    expect(open).toEqual([true, false, false, false, false, false, false, false]);
+    expect(open).toEqual([true, false, false, false, false, false, false, false, false]);
   });
 
   it("gives each FAQ summary a 56px row and its answer in the page", () => {
-    expect(page.match(/<summary[^>]*min-h-14/g)).toHaveLength(8);
+    expect(page.match(/<summary[^>]*min-h-14/g)).toHaveLength(9);
     for (const { answer } of FAQ) expect(copy).toContain(answer);
   });
 
@@ -97,7 +98,11 @@ describe("home page /", () => {
     expect(copy).toContain("Read more on the Safe Labs blog");
   });
 
-  it("has the footer", () => {
+  it("gives the FAQ section the anchor the footer links to", () => {
+    expect(page.match(/<section[^>]*\sid="faq"/g)).toHaveLength(1);
+  });
+
+  it("has the shared footer (details in footer.test.ts)", () => {
     expect(copy).toContain("Built by Safe Labs AI Inc.");
     for (const s of ["Live agent", "Scenarios", "Blog", "Source on GitHub"]) expect(copy).toContain(s);
   });
