@@ -21,7 +21,7 @@ flowchart LR
 | Component | File | Role | Can write the ledger? |
 | :--- | :--- | :--- | :---: |
 | Muse Spark | `lib/meta/spark.ts` | Reasons over the current PackProof step; claims which objects it sees and proposes the next action. Advisory only. | No |
-| SAM 3.1 | `lib/meta/sam.ts` | Segments the frame for the step's concept prompts; returns what is *actually* in frame plus any visible text. | No |
+| SAM 3.1 | `lib/meta/sam.ts` | Segments the frame for the step's concept prompts; returns what SAM detects in the frame. Text in the frame is read separately (OCR or Spark image input), not by SAM. | No |
 | Muse Voice Transcribe | `lib/meta/voice.ts` | Transcribes what was *actually* said by the operator. | No |
 | Ledger | `lib/guard/ledger.ts` | State machine for ORDER-1042: `VERIFY_MUG → VERIFY_NOTEBOOK → VERIFY_CABLE → SEAL → SHIP → COMPLETE`. Defines the expected objects at each step. | — |
 | Injection detector | `lib/guard/injections.ts` | Deterministic pattern match over image text and transcripts. | No |
@@ -65,9 +65,9 @@ Each of `spark.ts`, `sam.ts` and `voice.ts` exports a small interface (`SparkCli
 
 * The factory returns the mock when the matching key (`META_SPARK_API_KEY`, `META_SAM_API_KEY`, `META_VOICE_API_KEY`) is unset, or when `SAFELABS_USE_MOCKS=true`. See `.env.example`.
 * Mocks accept the case data (`mockClaim`, `mockDetections`, `mockImageText`, `mockTranscript`) so the live demo and benchmark replay ASI-MM cases exactly.
-* Live clients implement the same interface; the live API calls are not wired yet, and they throw if selected. Because Guard only consumes the interface output, swapping mock for live does not change `reconcile()` or the ledger.
+* Live clients implement the same interface and call the Meta APIs. A failed live call is reported as unavailable (no detections, no transcript); it is never replaced by mock output. Because Guard only consumes the interface output, swapping mock for live does not change `reconcile()` or the ledger.
 
-The live PackProof demo (`components/LiveAgent.tsx`) and the benchmark both run on the mocks.
+The hero scenarios (`components/LiveAgent.tsx`) and the benchmark replay run on the mocks. The `/packproof` page uses real camera and microphone input.
 
 ## Benchmark
 

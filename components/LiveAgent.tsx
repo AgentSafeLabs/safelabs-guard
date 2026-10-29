@@ -240,7 +240,7 @@ export default function LiveAgent() {
 
       {!guardOn && (
         <div className="rounded-xl border-2 border-amber-400 bg-amber-950 px-4 py-3 text-center font-bold text-amber-200">
-          ⚠ Unguarded: agent trusts perception
+          ⚠ Unguarded: agent trusts Spark&apos;s claim
         </div>
       )}
 

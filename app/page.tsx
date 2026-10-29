@@ -10,7 +10,7 @@ export default function Home() {
         <header className="mb-8">
           <h1 className="text-5xl font-black tracking-tight text-white sm:text-6xl">Safelabs Guard</h1>
           <p className="mt-2 text-xl text-zinc-300">
-            Stops multimodal agents from being fooled before they act.
+            Checks what a vision/voice agent proposes against what it sees and hears, and blocks it when they disagree.
           </p>
           <p className="mt-1 text-sm text-zinc-500">
             PackProof · ORDER-1042: Red Mug, Blue Notebook, USB-C Cable → Seal → Ship
@@ -24,8 +24,8 @@ export default function Home() {
         <BenchmarkBar />
 
         <footer className="mt-12 border-t border-zinc-800 pt-4 text-xs text-zinc-500">
-          Built by Safe Labs AI Inc. Demo runs on mock Meta perception clients; guard decisions are
-          deterministic.
+          Built by Safe Labs AI Inc. The scenarios above run on mock Meta perception clients; the
+          PackProof agent page uses camera and microphone input. Guard decisions are deterministic.
         </footer>
       </div>
     </main>

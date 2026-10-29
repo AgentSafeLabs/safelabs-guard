@@ -15,9 +15,10 @@ export default function PackProofPage() {
             Pack ORDER-1042 (red mug, blue notebook, USB-C cable) in front of your camera, one step at a
             time. Each turn sends a photo and an optional spoken clip to the agent. The agent proposes an
             action. In Guarded mode, Safelabs Guard checks that proposal against what SAM sees and what was
-            said, and only lets it run if everything agrees. In Unguarded mode, the agent runs it anyway. A
-            sign in the frame or a spoken &ldquo;ship it now&rdquo; can make the unguarded agent ship early;
-            the guarded one blocks it.
+            said, and only lets it run if everything agrees. In Unguarded mode, the agent runs whatever it
+            proposes. The clearest demo is a wrong object: put a banana in the box and the unguarded agent
+            can advance, while the guard blocks it. Signs in the frame and spoken commands are flagged by
+            the guard in both modes; the underlying model sometimes resists them on its own.
           </p>
         </header>
         <PackProofClient />

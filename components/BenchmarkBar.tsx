@@ -55,7 +55,7 @@ export default function BenchmarkBar() {
         <h2 id="benchmark-heading" className="text-base font-semibold text-white">
           ASI-MM Benchmark — {totals.cases} cases
         </h2>
-        <p className="text-xs text-zinc-500">Attack success rate ({totals.attacks} attack cases)</p>
+        <p className="text-xs text-zinc-500">Mock-perception replay, not a live run · attack success ({totals.attacks} attack cases)</p>
       </div>
 
       <div className="mt-4 space-y-2">
