@@ -11,6 +11,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { LiveCallRunner, type LiveAttempt } from "./live-calls";
 import { scanRecordingText } from "./secrets";
 
 export const BENCH_MODES = ["replay", "record", "live"] as const;
@@ -84,12 +85,17 @@ export interface RecorderOptions {
   /** bench/recordings */
   dir: string;
   now?: () => Date;
+  /** Timeouts, retries and progress for live calls. Default: no retries, silent. */
+  live?: LiveCallRunner;
 }
 
 export class Recorder {
   readonly mode: BenchMode;
   readonly dir: string;
   private readonly now: () => Date;
+  readonly live: LiveCallRunner;
+  /** The case being run, for progress lines. */
+  caseId: string | null = null;
   /** Live calls made through call() (one per recording made or live result used). */
   liveCalls = 0;
   /** First hard error (replay miss, failed live call). Callers that swallow errors check it. */
@@ -99,6 +105,7 @@ export class Recorder {
     this.mode = options.mode;
     this.dir = options.dir;
     this.now = options.now ?? (() => new Date());
+    this.live = options.live ?? new LiveCallRunner();
   }
 
   pathFor(input: KeyInput): string {
@@ -134,23 +141,38 @@ export class Recorder {
     writeFileSync(path, text);
   }
 
-  /** Replay: the recording or a hard error. Record: the recording, or a live call that is then saved. Live: a live call. */
-  async call<T>(input: KeyInput, live: () => Promise<T>, validate: (value: unknown) => value is T): Promise<T> {
+  /**
+   * Replay: the recording or a hard error. Record: the recording, or a live call that is then saved. Live: a live call.
+   * A live call is retried by this.live (record runs, transient failures); the recording is written only after a
+   * response that passed `validate`, so a failed call leaves nothing on disk.
+   */
+  async call<T>(
+    input: KeyInput,
+    live: (attempt: LiveAttempt) => Promise<T>,
+    validate: (value: unknown) => value is T,
+    options: { quietReuse?: boolean } = {},
+  ): Promise<T> {
     if (this.mode !== "live") {
       const stored = this.read(input, validate);
-      if (stored !== null) return stored;
+      if (stored !== null) {
+        this.live.noteReused(input.service, this.caseId, !options.quietReuse);
+        return stored;
+      }
       if (this.mode === "replay") throw this.fail(new ReplayMissError(input.service, recordingKey(input)));
     }
     this.liveCalls += 1;
-    let response: T;
     try {
-      response = await live();
+      return await this.live.run(
+        { service: input.service, caseId: this.caseId, saves: this.mode === "record" },
+        live,
+        (response) => {
+          if (!validate(response)) throw new Error(`Live ${input.service} call returned an unexpected shape`);
+          if (this.mode === "record") this.write(input, response);
+        },
+      );
     } catch (err) {
       throw this.fail(err instanceof Error ? err : new Error(String(err)));
     }
-    if (!validate(response)) throw this.fail(new Error(`Live ${input.service} call returned an unexpected shape`));
-    if (this.mode === "record") this.write(input, response);
-    return response;
   }
 
   /** Remembers the first hard error and returns it. */

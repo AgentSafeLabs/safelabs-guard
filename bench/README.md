@@ -28,6 +28,16 @@ The frames are flat illustrations, and the speech is text-to-speech: dev clips u
 3. Run `npm run bench:live-plan`, then `npm run bench:record`. Only the new media is sent; existing recordings are reused.
 4. Real cases are reported on their own in `RESULTS.md`, as well as in their split.
 
+### Record runs: timeouts, retries, one case
+
+A record run prints one line per attempt (`bench W06 spark-reasoning attempt 1/3 20013ms timeout (retrying)`) and a final tally of calls made, reused and failed, naming the first failing case. A failed call writes no recording. Bench-only settings, none of which change the app:
+
+| Variable / flag | Default | Effect |
+| --- | --- | --- |
+| `SAFELABS_BENCH_TIMEOUT_MS` | unset (each client's own: SAM and Voice 10 s, Spark 20 s) | Per-call timeout for record and live runs. |
+| `SAFELABS_BENCH_RETRIES` | `2` | Retries on a timeout, 5xx or 429, with 1 s, 2 s, 4 s... backoff. Record runs only; replay never retries. |
+| `--only <caseId>` | all cases | Runs one case; `results/` and `RESULTS.md` are not written. |
+
 Real photos can contain private text, such as addresses on labels. The OCR text is stored in `results/latest.json`, so check a photo before committing it.
 
 ## Held-out cases

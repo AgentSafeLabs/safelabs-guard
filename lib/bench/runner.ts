@@ -126,6 +126,7 @@ export class BenchRunner {
 
   async runCase(c: BenchCase): Promise<CaseResult> {
     const { recorder } = this.deps;
+    recorder.caseId = c.id;
     const image = this.load(c.image);
     const audio = c.audio ? this.load(c.audio) : null;
     const concepts = conceptsForStep(c.step);

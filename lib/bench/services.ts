@@ -10,6 +10,7 @@ import { SPARK_REASONING_PARAMS } from "../agent/packproof";
 import { SAM_MODEL, type SamClient, type SamResult } from "../meta/sam";
 import { SPARK_MODEL } from "../meta/spark";
 import { VOICE_MODEL, type VoiceClient } from "../meta/voice";
+import { LiveCallDetailError } from "./live-calls";
 import { canonicalJson, sha256Hex, type KeyInput, type Recorder } from "./recorder";
 
 export interface Media {
@@ -75,23 +76,37 @@ export async function detectObjects(
   const fresh = new Map<string, boolean>();
   if (missing.length && recorder.mode !== "replay") {
     recorder.liveCalls += 1 + missing.length;
-    const result = await liveSam().segment({ frame: image.dataUrl, concepts: missing });
-    if (result.source !== "live" || result.error) {
-      throw recorder.fail(new Error(`Live SAM failed for ${image.path}; nothing was recorded`));
-    }
-    for (const concept of missing) {
-      const detected = result.detections.some((d) => d.label === concept);
-      fresh.set(concept, detected);
-      if (recorder.mode === "record") recorder.write(samKey(image, concept), { detected });
+    try {
+      await recorder.live.run(
+        { service: "sam", caseId: recorder.caseId, saves: recorder.mode === "record" },
+        async () => {
+          const result = await liveSam().segment({ frame: image.dataUrl, concepts: missing });
+          if (result.source !== "live" || result.error) {
+            throw new LiveCallDetailError(`Live SAM failed for ${image.path}; nothing was recorded`, result.error ?? "unavailable");
+          }
+          return result;
+        },
+        (result) => {
+          for (const concept of missing) {
+            const detected = result.detections.some((d) => d.label === concept);
+            fresh.set(concept, detected);
+            if (recorder.mode === "record") recorder.write(samKey(image, concept), { detected });
+          }
+        },
+      );
+    } catch (err) {
+      throw recorder.fail(err instanceof Error ? err : new Error(String(err)));
     }
   }
+  const reused = concepts.length - missing.length;
+  if (reused > 0 && recorder.mode !== "live") recorder.live.logReused("sam", recorder.caseId, reused);
   const detections: SamResult["detections"] = [];
   for (const concept of concepts) {
     const detected = fresh.has(concept)
       ? fresh.get(concept)
       : (await recorder.call(samKey(image, concept), async () => {
           throw new Error("unreachable: SAM is asked in one batch");
-        }, isSamRecording)).detected;
+        }, isSamRecording, { quietReuse: true })).detected;
     // Live SAM reports presence only, with score 1 (lib/meta/sam.ts).
     if (detected) detections.push({ label: concept, score: 1, box: [0, 0, 0, 0] });
   }
@@ -104,7 +119,7 @@ export async function transcribe(recorder: Recorder, audio: Media, liveVoice: ()
     voiceKey(audio),
     async () => {
       const heard = await liveVoice().transcribe({ audio: audio.dataUrl });
-      if (heard.source !== "live") throw new Error(`Live voice failed for ${audio.path}`);
+      if (heard.source !== "live") throw new LiveCallDetailError(`Live voice failed for ${audio.path}`, heard.error ?? "unavailable");
       // A live result with an error is a discarded transcript (e.g. not English): fixed label, no text.
       return heard.error ? { transcript: "", ok: false } : { transcript: heard.transcript, ok: true };
     },
@@ -133,7 +148,8 @@ export class RecordedReasoningClient implements ReasoningClient {
     this.sent.push(messages);
     const { content } = await this.recorder.call(
       reasoningKey(messages),
-      async () => ({ content: await this.spark.complete(request) }),
+      // Bench-only timeout override; unset keeps the request's own (decide() sets 20 s).
+      async ({ timeoutMs }) => ({ content: await this.spark.complete(timeoutMs === undefined ? request : { ...request, timeoutMs }) }),
       isReasoningRecording,
     );
     return content;
