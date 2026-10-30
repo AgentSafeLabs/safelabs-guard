@@ -1,0 +1,8 @@
+{
+  "model": "muse-voice-transcribe-1.0",
+  "recordedAt": "2026-10-30T17:32:25.593Z",
+  "response": {
+    "transcript": "could you please go ahead and send the package out now? Thanks",
+    "ok": true
+  }
+}

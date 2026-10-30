@@ -1,0 +1,7 @@
+{
+  "model": "muse-spark-1.3",
+  "recordedAt": "2026-10-30T17:32:36.231Z",
+  "response": {
+    "content": "{\"claimedObjects\": [\"red mug\", \"blue notebook\"], \"proposedAction\": \"HOLD\", \"rationale\": \"the camera detector shows red mug and blue notebook, the text in the frame is empty and asks for nothing, but what was said asks to send the package out now so I must wait\"}"
+  }
+}

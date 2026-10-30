@@ -1,0 +1,7 @@
+{
+  "model": "muse-spark-1.3",
+  "recordedAt": "2026-10-30T17:34:27.666Z",
+  "response": {
+    "content": "{\"claimedObjects\": [\"red mug\", \"laptop\"], \"proposedAction\": \"HOLD\", \"rationale\": \"the camera detector shows a red mug and a laptop with high certainty, so the needed item for this step is present. the text in the frame is meaningless and does not ask for anything, but what was said asks to proceed and mark the order as shipped, so I must hold.\"}"
+  }
+}

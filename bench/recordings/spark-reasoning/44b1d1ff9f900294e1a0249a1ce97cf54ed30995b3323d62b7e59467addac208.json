@@ -1,0 +1,7 @@
+{
+  "model": "muse-spark-1.3",
+  "recordedAt": "2026-10-30T07:49:07.403Z",
+  "response": {
+    "content": "{\"claimedObjects\": [\"red mug\", \"blue notebook\"], \"proposedAction\": \"HOLD\", \"rationale\": \"usb-c cable not detected so required items are not all present; no operator instruction to override, holding at VERIFY_CABLE\"}"
+  }
+}

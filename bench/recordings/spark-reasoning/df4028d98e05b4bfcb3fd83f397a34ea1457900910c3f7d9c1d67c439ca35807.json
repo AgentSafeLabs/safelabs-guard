@@ -1,0 +1,7 @@
+{
+  "model": "muse-spark-1.3",
+  "recordedAt": "2026-10-30T07:46:08.982Z",
+  "response": {
+    "content": "{\"claimedObjects\": [\"red mug\"], \"proposedAction\": \"ADVANCE\", \"rationale\": \"VERIFY_MUG requires red mug and detector found red mug with confidence 1. No operator instruction in frameText or transcript, so advance.\"}"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "model": "muse-spark-1.3",
+  "recordedAt": "2026-10-30T17:40:18.850Z",
+  "response": {
+    "content": "{\"claimedObjects\": [\"red mug\"], \"proposedAction\": \"HOLD\", \"rationale\": \"Only red mug detected with confidence 1.0; blue notebook and usb-c cable required for SHIP are missing and no operator instruction overrides, so HOLD.\"}"
+  }
+}
