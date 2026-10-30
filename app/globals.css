@@ -64,3 +64,25 @@ summary::-webkit-details-marker {
     scroll-behavior: auto !important;
   }
 }
+
+/* Home page surfaces that need a tint of the accent. Derived from --accent so
+   the colour stays defined once. */
+.hero-glow {
+  background: radial-gradient(55% 60% at 72% 30%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%);
+}
+.card-mint {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+  background: var(--surface-2);
+  box-shadow: 0 24px 60px -28px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.card-mint-strong {
+  border-color: var(--accent);
+  box-shadow: 0 0 40px -10px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.cta-band {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, var(--surface-2)), var(--surface-2) 70%);
+}
+.ledger-line {
+  background: linear-gradient(90deg, var(--accent), var(--accent) 70%, var(--pending));
+}

@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import Home, { metadata } from "../../app/page";
-import { BLOG_URL } from "../nav/links";
+import { BLOG_URL, REPO_URL } from "../nav/links";
 import { FAQ } from "./faq";
 import { render, tags, text } from "../site/test-utils";
 
@@ -28,48 +28,96 @@ describe("home page /", () => {
   });
 
   it("has the hero copy and both calls to action", () => {
-    expect(copy).toContain("Runtime guardrail for multimodal agents");
-    expect(copy).toContain("Verify what the agent sees before it acts.");
-    expect(copy).toContain("A deterministic check between your agent and its next action.");
+    expect(copy).toContain("A safety check for AI agents that use cameras and voice");
+    expect(page).toMatch(/<h1[^>]*>Make sure your AI agent saw the right thing before it acts\.<\/h1>/);
+    expect(copy).toContain(
+      "Safelabs Guard compares what an AI agent sees and hears with your plan. If something is wrong, missing or planted, the agent stops instead of acting.",
+    );
     const links = tags(page, "a");
-    const live = links.find((a) => a.href === "/live" && /min-h-12/.test(a.class));
-    const scenarios = links.find((a) => a.href === "/scenarios" && /min-h-12/.test(a.class));
-    expect(live).toBeDefined();
-    expect(scenarios).toBeDefined();
+    expect(links.find((a) => a.href === "/live" && /min-h-12/.test(a.class))).toBeDefined();
+    expect(links.find((a) => a.href === "/scenarios" && /min-h-12/.test(a.class))).toBeDefined();
     expect(copy).toContain("Try the live agent");
     expect(copy).toContain("See scenarios");
   });
 
-  it("shows the one-turn card with a HOLD that has an icon and a word", () => {
-    expect(copy).toContain("One turn, in short");
-    expect(copy).toContain("Agent proposes: Verify the notebook");
-    expect(copy).toContain("Evidence: Frame shows a mug only");
-    expect(copy).toMatch(/HOLD\s+They disagree, so nothing runs\./);
+  it("keeps the hero's source line on one line from lg", () => {
+    const p = /<p[^>]*lg:whitespace-nowrap[^>]*>(.*?)<\/p>/s.exec(page)?.[1] ?? "";
+    expect(text(p).trim()).toBe("Real phone camera · Muse Spark · SAM 3.1 · Muse Voice · Simulated shipment");
   });
 
-  it("has the pipeline boxes and the two outcome chips", () => {
-    for (const s of ["Camera frame", "Voice clip", "SAM 3.1", "finds objects", "OCR", "reads text in frame", "Muse Voice", "transcribes speech", "Muse Spark", "proposes an action from a text report", "fixed rules, no AI model", "ALLOW", "HOLD"]) {
-      expect(copy, s).toContain(s);
-    }
-    expect(page).toContain("border-2 border-accent");
-  });
-
-  it("has the two outcome cards and the three check cards", () => {
-    for (const s of ["Without the guard", "With Safelabs Guard", "Banana in box", "Advances anyway", "Held. Not a notebook.", "Right object", "Matches the order's ledger.", "Hidden instructions", "Signs and spoken commands are flagged.", "Fails closed", "Any part down means hold."]) {
-      expect(copy, s).toContain(s);
+  it("replaces the old hero card and numbers strip", () => {
+    for (const gone of ["One turn, in short", "Same wrong object, two outcomes", "Banana in box", "Advances anyway", "Without the guard"]) {
+      expect(copy, gone).not.toContain(gone);
     }
   });
 
-  it("shows the five progress labels, all filled", () => {
-    const list = /<ol[^>]*aria-label="Order steps, all verified"[^>]*>(.*?)<\/ol>/s.exec(page)?.[1] ?? "";
-    expect(text(list).replace(/\([a-z ]+\)/g, "").split(" ").filter(Boolean)).toEqual(["Mug", "Notebook", "Cable", "Seal", "Ship"]);
-    expect(list.match(/bg-accent/g)).toHaveLength(5);
+  it("has the demo video card with a poster button and no iframe", () => {
+    expect(page).toContain('aria-label="Play the 3 minute demo here"');
+    expect(page).not.toContain("<iframe");
+    expect(copy).toContain("Watch the 3-minute demo");
+    expect(copy).toContain("A packing agent, a real phone camera, five checks. Plays right here.");
+    expect(copy).toContain("3:10");
+  });
+
+  it("has the why-it-matters panel", () => {
+    for (const s of ["Why it matters", "Agents can misread", "Hidden orders exist", "Mistakes are costly", "Safelabs Guard holds the action until the evidence checks out."]) {
+      expect(copy, s).toContain(s);
+    }
+  });
+
+  it("has the three how-it-works cards in one row from lg", () => {
+    for (const s of ["The guard sits between seeing and doing", "See and hear", "Check the ledger", "Allow or hold", "No model decides this step."]) {
+      expect(copy, s).toContain(s);
+    }
+    expect(page).toMatch(/flex flex-col gap-3 lg:flex-row lg:flex-nowrap/);
+    expect(page.match(/min-w-0 flex-1/g)).toHaveLength(3);
+  });
+
+  it("explains the ledger and lists the five steps", () => {
+    for (const s of ["WHAT IT IS", "WHY IT IS NEEDED", "WHY WE USE IT"]) expect(copy.toUpperCase()).toContain(s);
+    const list = /<ol[^>]*aria-label="Order steps"[^>]*>(.*?)<\/ol>/s.exec(page)?.[1] ?? "";
+    for (const s of ["Mug", "Red mug in frame", "Notebook", "Blue notebook", "Cable", "USB-C cable", "Seal", "Box sealed", "Ship", "One-time approval"]) {
+      expect(text(list), s).toContain(s);
+    }
+    expect(list.match(/border-accent/g)).toHaveLength(4);
+    expect(list.match(/border-pending/g)).toHaveLength(1);
+  });
+
+  it("has the three rule cards and the two demo moments", () => {
+    for (const s of ["Right object", "Hidden instructions", "Fails closed", "Wrong mug in frame", "Red mug in frame", "STEP 1 OF 5 · VERIFY THE MUG"]) {
+      expect(copy.toUpperCase(), s).toContain(s.toUpperCase());
+    }
+    expect(page.match(/border-l-\[5px\]/g)).toHaveLength(2);
+    expect(page.match(/border-t-\[3px\]/g)).toHaveLength(3);
   });
 
   it("lists what was tested live and the limits", () => {
-    for (const s of ["Tested live", "Missing items", "Wrong objects", "Signs in frame", "Spoken commands", "Limits", "Shipment simulated", "English voice only", "Hackathon demo"]) {
+    for (const s of [
+      "Tested live, with limits",
+      "Missing items and wrong objects",
+      "Signs in frame with hidden instructions",
+      "Spoken commands",
+      "An extra item at the seal step",
+      "The shipment is simulated",
+      "English voice only",
+      "A hackathon demo, not a product",
+      "English-only voice allowlist",
+    ]) {
       expect(copy, s).toContain(s);
     }
+  });
+
+  it("places the FAQ after the results and before the closing band", () => {
+    const at = (s: string) => page.indexOf(s);
+    expect(at("Tested live, with limits")).toBeLessThan(at('id="faq"'));
+    expect(at('id="faq"')).toBeLessThan(at("Try it with your own camera."));
+  });
+
+  it("ends with the closing call to action", () => {
+    expect(copy).toContain("Show the agent the right and the wrong object and watch what it decides.");
+    const gh = tags(page, "a").find((a) => a.href === REPO_URL)!;
+    expect(gh.target).toBe("_blank");
+    expect(gh.rel).toBe("noopener noreferrer");
   });
 
   it("has exactly 9 FAQ items with the exact questions, the first open", () => {
@@ -103,7 +151,7 @@ describe("home page /", () => {
   });
 
   it("has the shared footer (details in footer.test.ts)", () => {
-    expect(copy).toContain("Built by Safe Labs AI Inc.");
-    for (const s of ["Live agent", "Scenarios", "Blog", "Source on GitHub"]) expect(copy).toContain(s);
+    expect(copy).toContain("Built by Waqar Javed");
+    for (const s of ["Live agent", "Scenarios", "Demo video", "Blog", "GitHub"]) expect(copy).toContain(s);
   });
 });
