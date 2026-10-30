@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "../../app/api/guard/live-check/route";
+import { pngBytes, wavBytes } from "../server/meta-stub.test-helpers";
+import { resetRateLimits } from "../server/rate-limit";
 
 // Never call the live API from tests: every fetch is stubbed.
 const fetchMock = vi.fn<typeof fetch>();
 const FAKE_KEY = "test-key-not-real";
-const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-const WAV = new Uint8Array([...Buffer.from("RIFF"), 0, 0, 0, 0, ...Buffer.from("WAVE")]);
+const PNG = pngBytes();
+const WAV = wavBytes();
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -50,6 +52,7 @@ async function call(fields: Parameters<typeof request>[0]) {
 }
 
 beforeEach(() => {
+  resetRateLimits();
   fetchMock.mockReset();
   vi.stubGlobal("fetch", fetchMock);
   vi.stubEnv("SAFELABS_USE_MOCKS", "false");

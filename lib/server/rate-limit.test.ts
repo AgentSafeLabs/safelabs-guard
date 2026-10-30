@@ -5,10 +5,10 @@ beforeEach(() => resetRateLimits());
 afterEach(() => vi.unstubAllEnvs());
 
 describe("checkRate", () => {
-  it("allows the default 20 per minute per IP", () => {
+  it("allows the default 8 per minute per IP on billed routes", () => {
     const t = 1_000_000;
-    for (let i = 0; i < 20; i++) expect(checkRate("1.1.1.1", t + i).allowed).toBe(true);
-    expect(checkRate("1.1.1.1", t + 20).allowed).toBe(false);
+    for (let i = 0; i < 8; i++) expect(checkRate("1.1.1.1", t + i).allowed).toBe(true);
+    expect(checkRate("1.1.1.1", t + 8).allowed).toBe(false);
     expect(checkRate("2.2.2.2", t + 20).allowed).toBe(true);
   });
 

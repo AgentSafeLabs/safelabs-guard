@@ -32,6 +32,9 @@ export function extraPassesEnabled(env: Record<string, string | undefined> = pro
   return (env.SAFELABS_OCR_PASSES ?? "").trim().toLowerCase() !== "off";
 }
 
+/** Decode cap, same as the upload check in lib/server/limits.ts (sharp's default is about 268 MP). */
+const SHARP_OPTIONS = { failOn: "none", limitInputPixels: 50_000_000 } as const;
+
 /** Pixels brighter than this (0-255, on a 240 px wide copy) count as "sign". */
 const LIGHT = 190;
 /** A bright region must cover at least this share of the frame. */
@@ -79,8 +82,8 @@ export function brightBoxes(grey: Uint8Array, gw: number, gh: number): Box[] {
 export const extraPasses: ExtraPasses = async (bytes) => {
   try {
     const { default: sharp } = await import("sharp");
-    const base = () => sharp(bytes, { failOn: "none" }).removeAlpha().greyscale().normalise();
-    const { width = 0, height = 0 } = await sharp(bytes, { failOn: "none" }).metadata();
+    const base = () => sharp(bytes, SHARP_OPTIONS).removeAlpha().greyscale().normalise();
+    const { width = 0, height = 0 } = await sharp(bytes, SHARP_OPTIONS).metadata();
     if (width < 16 || height < 16) return [];
 
     const passes: OcrPass[] = [
@@ -89,7 +92,7 @@ export const extraPasses: ExtraPasses = async (bytes) => {
     ];
 
     const gh = Math.max(1, Math.round((height / width) * GRID_WIDTH));
-    const grey = await sharp(bytes, { failOn: "none" }).removeAlpha().greyscale().resize(GRID_WIDTH, gh).raw().toBuffer();
+    const grey = await sharp(bytes, SHARP_OPTIONS).removeAlpha().greyscale().resize(GRID_WIDTH, gh).raw().toBuffer();
     const k = width / GRID_WIDTH;
     for (const b of brightBoxes(grey, GRID_WIDTH, gh)) {
       const padX = Math.round((b.x1 - b.x0 + 1) * k * 0.1);

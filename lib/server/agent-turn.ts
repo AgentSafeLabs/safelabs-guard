@@ -26,9 +26,12 @@ import { freshSessionState, sessionFromState, signSession, verifySession, type S
 import { TokenConfigError } from "../agent/signing";
 import type { AgentMode, Observation, TurnRecord } from "../agent/types";
 import { MockVisionClient, selectVision, type ImageUnderstanding, type VisionExtract } from "../agent/vision";
+import { MAX_AUDIO_BYTES, MAX_IMAGE_BYTES, MAX_TURN_BODY_BYTES } from "./limits";
 import { checkRate, clientIp, consumeLiveBudget, isLiveDisabled } from "./rate-limit";
+import { inspectImage, isValidWav, readMultipart, sniffImage } from "./request-guard";
 
-export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+export { sniffImage };
+export const MAX_UPLOAD_BYTES = MAX_IMAGE_BYTES;
 /** Unordered objects SAM is also asked about on every turn. */
 export const ROUTE_DISTRACTORS = ["banana", "laptop"] as const;
 /** No Spark retry once a turn has run this long: the route's maxDuration is 60 s. */
@@ -46,26 +49,8 @@ function jsonError(status: number, error: string, extra: Record<string, unknown>
   return Response.json({ error, ...extra }, { status, headers });
 }
 
-/** PNG, JPEG or WebP by magic bytes. Returns the MIME type to use, or null. */
-export function sniffImage(head: Uint8Array): "image/png" | "image/jpeg" | "image/webp" | null {
-  const b = Buffer.from(head);
-  if (b.length >= 8 && b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
-    return "image/png";
-  }
-  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
-  if (b.length >= 12 && b.toString("ascii", 0, 4) === "RIFF" && b.toString("ascii", 8, 12) === "WEBP") {
-    return "image/webp";
-  }
-  return null;
-}
-
-function isWav(head: Uint8Array): boolean {
-  const b = Buffer.from(head);
-  return b.length >= 12 && b.toString("ascii", 0, 4) === "RIFF" && b.toString("ascii", 8, 12) === "WAVE";
-}
-
-async function toDataUri(file: File, type: string): Promise<string> {
-  return `data:${type};base64,${Buffer.from(await file.arrayBuffer()).toString("base64")}`;
+function dataUri(type: string, bytes: Uint8Array): string {
+  return `data:${type};base64,${Buffer.from(bytes).toString("base64")}`;
 }
 
 /**
@@ -218,12 +203,10 @@ export async function handleTurn(request: Request, deps: TurnDeps = DEFAULT_DEPS
     return jsonError(429, "Too many requests", {}, { "Retry-After": String(rate.retryAfter) });
   }
 
-  let form: FormData;
-  try {
-    form = await request.formData();
-  } catch {
-    return jsonError(400, "Expected multipart/form-data");
-  }
+  // 415 for another content type, 413 over the body cap, 400 if unparseable.
+  const parsed = await readMultipart(request, MAX_TURN_BODY_BYTES);
+  if (!parsed.ok) return parsed.response;
+  const form = parsed.form;
 
   const modeRaw = form.get("mode");
   if (modeRaw !== "guarded" && modeRaw !== "unguarded") {
@@ -251,21 +234,21 @@ export async function handleTurn(request: Request, deps: TurnDeps = DEFAULT_DEPS
     let frameDataUrl: string | undefined;
     if (imageField !== null) {
       if (!(imageField instanceof File) || imageField.size === 0) return jsonError(400, "image must be a non-empty file");
-      if (imageField.size > MAX_UPLOAD_BYTES) return jsonError(400, "image is larger than 8 MB");
+      if (imageField.size > MAX_IMAGE_BYTES) return jsonError(400, "image is larger than 8 MB");
       if (!imageField.type.startsWith("image/")) return jsonError(400, "image must be an image/* file");
-      const sniffed = sniffImage(new Uint8Array(await imageField.slice(0, 16).arrayBuffer()));
-      if (!sniffed) return jsonError(400, "image must be PNG, JPEG or WebP");
-      frameDataUrl = await toDataUri(imageField, sniffed);
+      const imageBytes = new Uint8Array(await imageField.arrayBuffer());
+      const image = inspectImage(imageBytes);
+      if (!image.ok) return jsonError(400, image.error);
+      frameDataUrl = dataUri(image.type, imageBytes);
     }
     const audioField = form.get("audio");
     let audio: string | undefined;
     if (audioField !== null) {
       if (!(audioField instanceof File) || audioField.size === 0) return jsonError(400, "audio must be a non-empty file");
-      if (audioField.size > MAX_UPLOAD_BYTES) return jsonError(400, "audio is larger than 8 MB");
-      if (!isWav(new Uint8Array(await audioField.slice(0, 12).arrayBuffer()))) {
-        return jsonError(400, "audio must be a WAV file");
-      }
-      audio = await toDataUri(audioField, "audio/wav");
+      if (audioField.size > MAX_AUDIO_BYTES) return jsonError(400, "audio is larger than 1 MB");
+      const audioBytes = new Uint8Array(await audioField.arrayBuffer());
+      if (!isValidWav(audioBytes)) return jsonError(400, "audio must be a WAV file");
+      audio = dataUri("audio/wav", audioBytes);
     }
 
     const killed = isLiveDisabled();
@@ -421,6 +404,7 @@ export async function handleTurn(request: Request, deps: TurnDeps = DEFAULT_DEPS
     });
   } catch (err) {
     if (err instanceof TokenConfigError) return jsonError(503, "Session signing is not configured");
+    console.error(`agent turn failed: ${err instanceof Error ? err.name : "unknown"}: ${redact(err instanceof Error ? err.message : "")}`);
     return jsonError(500, "Agent turn failed", { reason: redact(err instanceof Error ? err.name : "unknown") });
   }
 }

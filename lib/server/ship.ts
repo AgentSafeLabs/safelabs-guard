@@ -16,7 +16,9 @@
 import { ORDER_1042 } from "../guard/ledger";
 import { verifyApproval, type ApprovalPayload } from "../agent/approval";
 import { deriveId, TokenConfigError } from "../agent/signing";
+import { MAX_JSON_BODY_BYTES } from "./limits";
 import { checkRate, clientIp } from "./rate-limit";
+import { readJsonObject } from "./request-guard";
 
 export interface ShipmentRecord {
   shipmentId: string;
@@ -35,18 +37,15 @@ export function shipmentFor(approval: Pick<ApprovalPayload, "orderId" | "jti" | 
 }
 
 export async function handleShip(request: Request): Promise<Response> {
-  const rate = checkRate(clientIp(request));
+  const rate = checkRate(clientIp(request), Date.now(), "ship");
   if (!rate.allowed) {
     return Response.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rate.retryAfter) } });
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "Expected a JSON body" }, { status: 400 });
-  }
-  const approval = (body as { approval?: unknown } | null)?.approval;
+  // 415 for another content type, 413 over 4 KB, 400 for bad JSON or a non-object.
+  const parsed = await readJsonObject(request, MAX_JSON_BODY_BYTES);
+  if (!parsed.ok) return parsed.response;
+  const approval = parsed.body.approval;
 
   try {
     const verified = verifyApproval(approval, ORDER_1042.id);
@@ -56,6 +55,7 @@ export async function handleShip(request: Request): Promise<Response> {
     if (err instanceof TokenConfigError) {
       return Response.json({ error: "Approval signing is not configured" }, { status: 503 });
     }
+    console.error(`ship failed: ${err instanceof Error ? err.name : "unknown"}`);
     return Response.json({ error: "Ship failed" }, { status: 500 });
   }
 }

@@ -71,7 +71,8 @@ describe("POST /api/agent/turn: validation", () => {
   it("503 when tokens cannot be signed in production", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("SAFELABS_TOKEN_SECRET", "");
-    expect((await call(turnRequest({ mode: "guarded" }))).status).toBe(503);
+    vi.stubEnv("SAFELABS_ALLOWED_ORIGINS", "https://app.example");
+    expect((await call(turnRequest({ mode: "guarded", origin: "https://app.example" }))).status).toBe(503);
   });
 });
 
