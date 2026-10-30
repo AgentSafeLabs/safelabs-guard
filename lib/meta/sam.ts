@@ -171,7 +171,12 @@ async function readSamStream(res: Response): Promise<SamStreamParse> {
 export class LiveSamClient implements SamClient {
   readonly mode = "live" as const;
 
-  constructor(private readonly apiKey: string) {}
+  /** timeoutMs is optional and bench-only; unset keeps metaFetch's 10 s default. */
+  constructor(private readonly apiKey: string, private readonly options: { timeoutMs?: number } = {}) {}
+
+  private signal(): AbortSignal | undefined {
+    return this.options.timeoutMs === undefined ? undefined : AbortSignal.timeout(this.options.timeoutMs);
+  }
 
   async segment(input: SamInput): Promise<SamResult> {
     try {
@@ -198,7 +203,7 @@ export class LiveSamClient implements SamClient {
     const form = new FormData();
     form.append("purpose", "user_data");
     form.append("file", image, `frame.${image.type.split("/")[1] || "png"}`);
-    const res = await metaFetch("/files", this.apiKey, { method: "POST", body: form });
+    const res = await metaFetch("/files", this.apiKey, { method: "POST", body: form, signal: this.signal() });
     const body = (await res.json()) as { id?: unknown };
     if (typeof body?.id !== "string") throw new MetaApiError("SAM parse failure: upload returned no id");
     return body.id;
@@ -208,6 +213,7 @@ export class LiveSamClient implements SamClient {
   private async verifyConcept(concept: string, fileId: string): Promise<boolean> {
     const res = await metaFetch("/responses", this.apiKey, {
       method: "POST",
+      signal: this.signal(),
       headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
       body: JSON.stringify({
         model: SAM_MODEL,

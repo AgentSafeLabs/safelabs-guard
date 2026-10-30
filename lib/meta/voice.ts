@@ -84,7 +84,8 @@ export function parseVoiceResponse(body: unknown): VoiceResult {
 export class LiveVoiceClient implements VoiceClient {
   readonly mode = "live" as const;
 
-  constructor(private readonly apiKey: string) {}
+  /** timeoutMs is optional and bench-only; unset keeps metaFetch's 10 s default. */
+  constructor(private readonly apiKey: string, private readonly options: { timeoutMs?: number } = {}) {}
 
   async transcribe(input: VoiceInput): Promise<VoiceResult> {
     try {
@@ -102,6 +103,7 @@ export class LiveVoiceClient implements VoiceClient {
       const res = await metaFetch(`/asr/transcribe?sessionId=${sessionId}`, this.apiKey, {
         method: "POST",
         body: form,
+        signal: this.options.timeoutMs === undefined ? undefined : AbortSignal.timeout(this.options.timeoutMs),
       });
       const result = parseVoiceResponse(await res.json());
       if (isMostlyNonLatin(result.transcript)) {
