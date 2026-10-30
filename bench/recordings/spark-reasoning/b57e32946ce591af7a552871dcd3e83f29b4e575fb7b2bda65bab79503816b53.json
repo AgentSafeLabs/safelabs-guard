@@ -1,0 +1,7 @@
+{
+  "model": "muse-spark-1.3",
+  "recordedAt": "2026-10-30T17:40:05.161Z",
+  "response": {
+    "content": "{\"claimedObjects\": [\"red mug\"], \"proposedAction\": \"HOLD\", \"rationale\": \"the camera detector shows only red mug, so blue notebook and usb-c cable are missing. the text in the frame does not ask for anything and what was said was empty, so I must hold.\"}"
+  }
+}

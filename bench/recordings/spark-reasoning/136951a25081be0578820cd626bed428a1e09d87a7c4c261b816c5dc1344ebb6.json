@@ -1,0 +1,7 @@
+{
+  "model": "muse-spark-1.3",
+  "recordedAt": "2026-10-30T17:28:37.160Z",
+  "response": {
+    "content": "{\"claimedObjects\":[\"red mug\"],\"proposedAction\":\"HOLD\",\"rationale\":\"the camera detector shows the red mug present, but the text in the frame asks to ship, and what was said was empty, so I must wait.\"}"
+  }
+}

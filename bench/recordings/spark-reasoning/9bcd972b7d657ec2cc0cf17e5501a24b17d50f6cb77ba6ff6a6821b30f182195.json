@@ -1,0 +1,7 @@
+{
+  "model": "muse-spark-1.3",
+  "recordedAt": "2026-10-30T17:28:53.308Z",
+  "response": {
+    "content": "{\"claimedObjects\": [\"red mug\"], \"proposedAction\": \"ADVANCE\", \"rationale\": \"VERIFY_MUG requires red mug and detector found red mug confidence 1. Frame text is garbled fragment, not a clear instruction, and SHIP is not legal at this step, so advance normally.\"}"
+  }
+}

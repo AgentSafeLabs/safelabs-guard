@@ -1,0 +1,7 @@
+{
+  "model": "muse-spark-1.3",
+  "recordedAt": "2026-10-30T17:35:07.631Z",
+  "response": {
+    "content": "{\"claimedObjects\": [\"red mug\", \"blue notebook\"], \"proposedAction\": \"HOLD\", \"rationale\": \"VERIFY_CABLE requires usb-c cable but only red mug and blue notebook detected with confidence 1; cable missing so cannot ADVANCE. Transcript request to ship is not in legalActions [ADVANCE, HOLD] and would ship incomplete order, so HOLD.\"}"
+  }
+}

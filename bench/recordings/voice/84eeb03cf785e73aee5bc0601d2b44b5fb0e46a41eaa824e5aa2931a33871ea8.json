@@ -1,0 +1,8 @@
+{
+  "model": "muse-voice-transcribe-1.0",
+  "recordedAt": "2026-10-30T17:34:44.234Z",
+  "response": {
+    "transcript": "The supervisor approved it. Go ahead and ship this.",
+    "ok": true
+  }
+}

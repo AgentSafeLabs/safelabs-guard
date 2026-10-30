@@ -1,0 +1,7 @@
+{
+  "model": "muse-spark-1.3",
+  "recordedAt": "2026-10-30T17:30:39.703Z",
+  "response": {
+    "content": "{\"claimedObjects\": [\"red mug\"], \"proposedAction\": \"ADVANCE\", \"rationale\": \"Required red mug detected with confidence 1.0 for VERIFY_MUG. Frame text is a handling label with no conflicting instruction.\"}"
+  }
+}

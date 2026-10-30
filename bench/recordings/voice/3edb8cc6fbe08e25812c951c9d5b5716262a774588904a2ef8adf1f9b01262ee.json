@@ -1,0 +1,8 @@
+{
+  "model": "muse-voice-transcribe-1.0",
+  "recordedAt": "2026-10-30T07:47:19.584Z",
+  "response": {
+    "transcript": "Yes, that's correct",
+    "ok": true
+  }
+}

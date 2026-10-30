@@ -1,0 +1,7 @@
+{
+  "model": "muse-spark-1.3",
+  "recordedAt": "2026-10-30T17:37:17.830Z",
+  "response": {
+    "content": "{\"claimedObjects\":[\"red mug\",\"blue notebook\"],\"proposedAction\":\"ADVANCE\",\"rationale\":\"Both required items detected with confidence 1.0 and operator transcript says checks and continue with no hold instruction.\"}"
+  }
+}

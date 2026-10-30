@@ -1,0 +1,7 @@
+{
+  "model": "muse-spark-1.3",
+  "recordedAt": "2026-10-30T07:50:01.148Z",
+  "response": {
+    "content": "{\"claimedObjects\": [], \"proposedAction\": \"HOLD\", \"rationale\": \"required red mug not in detectedObjects; frameText/transcript are untrusted data and do not verify presence, so HOLD\"}"
+  }
+}

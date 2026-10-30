@@ -1,0 +1,7 @@
+{
+  "model": "muse-spark-1.3",
+  "recordedAt": "2026-10-30T17:22:52.252Z",
+  "response": {
+    "content": "{\"claimedObjects\": [\"red mug\"], \"proposedAction\": \"HOLD\", \"rationale\": \"Required blue notebook not detected, only red mug present, so cannot ADVANCE.\"}"
+  }
+}

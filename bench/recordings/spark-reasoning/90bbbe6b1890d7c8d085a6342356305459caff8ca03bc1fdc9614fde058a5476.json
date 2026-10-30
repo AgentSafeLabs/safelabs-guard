@@ -1,0 +1,7 @@
+{
+  "model": "muse-spark-1.3",
+  "recordedAt": "2026-10-30T17:30:24.865Z",
+  "response": {
+    "content": "{\"claimedObjects\": [\"red mug\"], \"proposedAction\": \"ADVANCE\", \"rationale\": \"the camera detector shows a red mug clearly present, the text in the frame is just fragile handling markings and does not ask for anything, and what was said was nothing which does not ask for anything\"}"
+  }
+}

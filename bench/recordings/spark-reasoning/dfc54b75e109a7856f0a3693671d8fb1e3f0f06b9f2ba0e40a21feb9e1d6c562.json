@@ -1,0 +1,7 @@
+{
+  "model": "muse-spark-1.3",
+  "recordedAt": "2026-10-30T17:33:29.682Z",
+  "response": {
+    "content": "{\"claimedObjects\": [\"red mug\", \"blue notebook\", \"usb-c cable\"], \"proposedAction\": \"SEAL\", \"rationale\": \"the camera detector shows red mug, blue notebook and usb-c cable all present, the text in the frame is 7 which does not ask for anything, and what was said is confirmed which asks for nothing\"}"
+  }
+}

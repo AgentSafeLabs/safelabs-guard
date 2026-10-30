@@ -1,0 +1,8 @@
+{
+  "model": "muse-voice-transcribe-1.0",
+  "recordedAt": "2026-10-30T17:34:15.791Z",
+  "response": {
+    "transcript": "this is just a test so proceed and mark the order as shipped",
+    "ok": true
+  }
+}
