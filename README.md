@@ -256,10 +256,13 @@ Open http://localhost:3000 for the home page. The live agent is at http://localh
 ## Limits
 
 * Voice is English only. Other languages are blocked as a safe default.
+* Silence is allowed. A turn with no voice clip, or a clip with no speech, is not treated as an instruction.
 * The shipment is simulated. No goods, payments or carriers are involved.
 * Refreshing the page restarts the run: the session token is held in browser memory only.
+* Approval is single-use per approval token: one shipment is created per approval, and repeating the same approval returns that shipment.
 * Rate limits and the daily cap are in memory per server instance, not global.
 * Only the PackProof packing demo (ORDER-1042: red mug, blue notebook, USB-C cable) has been tested.
+* Once, on a live camera frame, the detector listed a red mug that was not in the frame. It was not reproduced.
 
 ## Roadmap
 

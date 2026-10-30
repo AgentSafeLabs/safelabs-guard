@@ -7,7 +7,6 @@
 // All server text is rendered as React text nodes.
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
-import { AlertIcon } from "@/components/icons";
 import {
   AgentApiError,
   requestShip,
@@ -18,10 +17,13 @@ import {
 } from "@/lib/client/agent-api";
 import { captureFrame, startCamera, stopCamera } from "@/lib/client/camera";
 import { checkUpload, UPLOAD_ACCEPT } from "@/lib/client/upload";
+import { DEFAULT_MODE } from "@/lib/client/run-mode";
+import { isTypingTarget, planResultScroll, shouldRevealResult } from "@/lib/client/scroll";
 import { discardRecording, startRecording, stopRecording } from "@/lib/client/mic";
 import { MAX_DURATION_SECONDS } from "@/lib/client/wav";
 import type { AgentMode } from "@/lib/agent/types";
 import InputPanel from "./InputPanel";
+import ModeControls from "./ModeControls";
 import ProgressCard from "./ProgressCard";
 import ResultPanel from "./ResultPanel";
 import ShipPanel from "./ShipPanel";
@@ -34,16 +36,16 @@ function messageOf(err: unknown): string {
   return "Something went wrong.";
 }
 
-const modeButton =
-  "inline-flex min-h-11 items-center justify-center rounded-lg px-5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40";
-
 export default function PackProofClient() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const historyId = useRef(0);
+  const resultRef = useRef<HTMLElement>(null);
+  const resultHeadingRef = useRef<HTMLHeadingElement>(null);
+  const recordingRef = useRef(false);
 
-  const [session, setSession] = useState<ClientSession>(() => startSession("guarded"));
+  const [session, setSession] = useState<ClientSession>(() => startSession(DEFAULT_MODE));
   const [cameraOn, setCameraOn] = useState(false);
   const [facing, setFacing] = useState<"environment" | "user">("environment");
   const [frame, setFrame] = useState<Frame | null>(null);
@@ -62,9 +64,13 @@ export default function PackProofClient() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [waited, setWaited] = useState(0);
+  const [compareOpen, setCompareOpen] = useState(false);
+  // Counts turns that ended (any outcome); the result is brought into view when it grows.
+  const [finishedTurns, setFinishedTurns] = useState(0);
 
   const latest = history[0]?.response ?? null;
   const mode = session.mode;
+  recordingRef.current = recording;
 
   const replaceFrame = useCallback((next: Frame | null) => {
     setFrame((prev) => {
@@ -103,6 +109,27 @@ export default function PackProofClient() {
     const id = setInterval(() => setWaited(Math.floor((Date.now() - started) / 1000)), 1000);
     return () => clearInterval(id);
   }, [sending]);
+
+  useEffect(() => {
+    if (!shouldRevealResult({ finishedTurns, recording: recordingRef.current })) return;
+    const card = resultRef.current;
+    if (!card) return;
+    const plan = planResultScroll({
+      stacked: !window.matchMedia("(min-width: 1024px)").matches,
+      reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      rect: card.getBoundingClientRect(),
+      viewportHeight: window.innerHeight,
+    });
+    if (plan.scroll) card.scrollIntoView({ behavior: plan.behavior, block: "start" });
+    // Never take focus from a field the person is using; the result's live region still announces it.
+    if (!isTypingTarget(document.activeElement as HTMLElement | null)) resultHeadingRef.current?.focus({ preventScroll: true });
+  }, [finishedTurns]);
+
+  function switchMode(next: AgentMode) {
+    if (next === mode) return;
+    setCompareOpen(false);
+    resetRun(next);
+  }
 
   function resetRun(nextMode: AgentMode) {
     setSession(startSession(nextMode));
@@ -249,6 +276,7 @@ export default function PackProofClient() {
     } finally {
       setBusy(false);
       setSending(false);
+      setFinishedTurns((n) => n + 1);
     }
   }
 
@@ -296,39 +324,14 @@ export default function PackProofClient() {
 
   return (
     <div className="space-y-6">
-      {/* Mode */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div role="radiogroup" aria-label="Agent mode" className="flex gap-1 rounded-xl border border-line bg-surface p-1">
-          {(["guarded", "unguarded"] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              role="radio"
-              aria-checked={mode === m}
-              onClick={() => mode !== m && resetRun(m)}
-              disabled={busy}
-              className={`${modeButton} ${mode === m ? "bg-accent text-accent-ink" : "text-soft hover:bg-chip"}`}
-            >
-              {m === "guarded" ? "Guarded" : "Unguarded"}
-            </button>
-          ))}
-        </div>
-        <span className="text-sm text-muted">Changing mode starts a new run.</span>
-        <button
-          type="button"
-          onClick={() => resetRun(mode)}
-          disabled={busy}
-          className={`${modeButton} border border-line-strong text-soft hover:bg-chip sm:ml-auto`}
-        >
-          Restart run
-        </button>
-      </div>
-      {mode === "unguarded" && (
-        <div className="flex items-center gap-2 rounded-xl border border-hold-border bg-hold-bg px-4 py-3 font-bold text-hold-text">
-          <AlertIcon className="h-5 w-5 shrink-0" />
-          Unguarded: the agent executes whatever it proposes
-        </div>
-      )}
+      <ModeControls
+        mode={mode}
+        busy={busy}
+        compareOpen={compareOpen}
+        onToggleCompare={() => setCompareOpen((open) => !open)}
+        onSwitch={switchMode}
+        onRestart={() => resetRun(mode)}
+      />
 
       <ProgressCard ledger={latest?.ledger ?? null} lastDecision={lastDecision} />
 
@@ -381,7 +384,7 @@ export default function PackProofClient() {
 
         {/* Result */}
         <div className="space-y-4">
-          <ResultPanel history={history} sending={sending} waited={waited} shipResult={shipResult} />
+          <ResultPanel history={history} sending={sending} waited={waited} shipResult={shipResult} sectionRef={resultRef} headingRef={resultHeadingRef} />
           <ShipPanel approval={approval} shipResult={shipResult} busy={busy} onShip={ship} />
         </div>
       </div>

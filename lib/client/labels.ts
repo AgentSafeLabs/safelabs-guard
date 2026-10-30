@@ -4,9 +4,19 @@ import type { SecurityEvent } from "../agent/security-events";
 import type { TurnRecord } from "../agent/types";
 import type { SourceLabel } from "../server/agent-turn";
 
-/** "VOICE: NOT SENT" when no clip went out; otherwise the server's label for the source. */
-export function sourceBadgeText(name: string, source: SourceLabel, opts: { notSent?: boolean } = {}): string {
-  return `${name}: ${opts.notSent ? "not sent" : source}`.toUpperCase();
+/** True for the fixed details that mean the source was never asked (the turn was stopped before perception ran). */
+export function isNotConsulted(detail: string | null | undefined): boolean {
+  return Boolean(detail && detail.includes("not consulted"));
+}
+
+/**
+ * "VOICE: NOT SENT" when no clip went out, "SAM: NOT CONSULTED" when the turn was
+ * blocked before that source ran; otherwise the server's label ("UNAVAILABLE"
+ * means the source was tried and failed).
+ */
+export function sourceBadgeText(name: string, source: SourceLabel, opts: { notSent?: boolean; notConsulted?: boolean } = {}): string {
+  const label = opts.notSent ? "not sent" : opts.notConsulted ? "not consulted" : source;
+  return `${name}: ${label}`.toUpperCase();
 }
 
 /** Labels image text by whether it was really read (live), mocked, or not read at all. */

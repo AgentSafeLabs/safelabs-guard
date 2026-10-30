@@ -105,6 +105,77 @@ describe("ResultPanel", () => {
     expect(t).toContain("Why unavailable: sam: sam timeout");
   });
 
+  it("shows NOT CONSULTED for sources a pre-perception BLOCK never asked, and UNAVAILABLE for the one that failed", () => {
+    const r = response(
+      { guard: { decision: "BLOCK", reason: "voice unavailable" } },
+      {
+        sources: { sam: "unavailable", voice: "unavailable", vision: "unavailable", spark: "unavailable" },
+        perceptionDetail: {
+          sam: "not consulted: perception failed closed",
+          vision: "not consulted: perception failed closed",
+          spark: "spark not consulted: perception failed closed",
+          voice: "voice timeout",
+        },
+      },
+    );
+    const t = text(panel([entry(r, 1, true)]));
+    expect(t).toContain("SAM: NOT CONSULTED");
+    expect(t).toContain("IMAGE TEXT: NOT CONSULTED");
+    expect(t).toContain("SPARK: NOT CONSULTED");
+    expect(t).toContain("VOICE: UNAVAILABLE");
+    expect(t).not.toContain("SAM: UNAVAILABLE");
+    expect(t).toContain("Why unavailable: voice: voice timeout");
+    expect(t).not.toContain("Why unavailable: sam");
+  });
+
+  it("shows UNAVAILABLE for sources that were tried and failed", () => {
+    const r = response({}, {
+      sources: { sam: "unavailable", voice: "live", vision: "unavailable", spark: "unavailable" },
+      perceptionDetail: { sam: "sam timeout", vision: "ocr error", spark: "spark timeout", voice: "voice not sent" },
+    });
+    const t = text(panel([entry(r)]));
+    expect(t).toContain("SAM: UNAVAILABLE");
+    expect(t).toContain("IMAGE TEXT: UNAVAILABLE");
+    expect(t).toContain("SPARK: UNAVAILABLE");
+    expect(t).not.toContain("NOT CONSULTED");
+  });
+
+  it("says No readable text for noisy OCR and keeps the raw text under Unreadable text found", () => {
+    const noisy = "Na di . rR! > W< '§ > | C BI } a == LHL IRs — J Ing = —) V4 Seta Xs | 8";
+    const markup = panel([entry(response({ perception: { ...response().turn.perception, imageText: noisy } }))]);
+    const t = text(markup);
+    expect(t).toContain("No readable text");
+    expect(t).toContain("Unreadable text found");
+    expect(t).toContain(noisy);
+    const card = /<h3[^>]*>Text in the image.*?<\/details>/s.exec(markup)![0];
+    expect(card).toMatch(/<summary[^>]*>\s*Details/);
+    expect(card.indexOf("No readable text")).toBeLessThan(card.indexOf("<details"));
+    expect(card.indexOf("Unreadable text found")).toBeGreaterThan(card.indexOf("<details"));
+  });
+
+  it("never collapses noisy text the guard flagged as an injection", () => {
+    const noisy = "Na di . rR! > W< '§ > | C BI } a == LHL IRs — J Ing = —) V4 Seta Xs | 8";
+    const r = response(
+      {
+        perception: { ...response().turn.perception, imageText: noisy },
+        guard: { decision: "BLOCK", reason: "Injection attempt detected: image text (ignore previous)" },
+      },
+      { securityEvents: [{ kind: "injection", source: "image", excerpt: "ignore", shadow: false }] },
+    );
+    const markup = panel([entry(r)]);
+    const card = /<h3[^>]*>Text in the image.*?<\/details>/s.exec(markup)![0];
+    expect(text(card)).not.toContain("No readable text");
+    expect(text(card)).not.toContain("Unreadable text found");
+    expect(card.indexOf("Na di")).toBeLessThan(card.indexOf("<details"));
+    expect(card).toContain("(caused the stop)");
+  });
+
+  it("has a focusable result heading and a polite status line", () => {
+    const markup = panel([entry(response())]);
+    expect(markup).toMatch(/<h2[^>]*tabindex="-1"[^>]*>Result<\/h2>/);
+    expect(markup).toMatch(/<p[^>]*role="status"[^>]*aria-live="polite"[^>]*>Turn 1: BLOCK\./);
+  });
+
   it("shows the shadow note in amber for an unguarded turn", () => {
     const r = response(
       { mode: "unguarded", guard: null, executed: "ADVANCE" },

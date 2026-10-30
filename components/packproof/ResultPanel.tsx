@@ -2,11 +2,11 @@
 // shown comes from fields the turn response already carries; server text is
 // rendered as React text nodes.
 
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import { AlertIcon, CheckIcon, ChevronDownIcon, XIcon } from "@/components/icons";
 import { agentSawText, type ShipResponse } from "@/lib/client/agent-api";
-import { failClosedExplanation, imageTextLabel, injectionBanner, sourceBadgeText } from "@/lib/client/labels";
-import { evidenceSummaries, flaggedEvidence, verdictView, type EvidenceKey, type Tone } from "@/lib/client/result-view";
+import { failClosedExplanation, imageTextLabel, injectionBanner, isNotConsulted, sourceBadgeText } from "@/lib/client/labels";
+import { evidenceSummaries, flaggedEvidence, imageTextView, verdictView, type EvidenceKey, type Tone } from "@/lib/client/result-view";
 import type { HistoryEntry, SourceLabel } from "./types";
 
 const SOURCE_STYLES: Record<SourceLabel, string> = {
@@ -26,12 +26,14 @@ function ToneIcon({ tone, className }: { tone: Tone; className?: string }) {
 }
 
 function SourceBadge({ label, source, detail, notSent }: { label: string; source: SourceLabel; detail?: string; notSent?: boolean }) {
+  // Only a source that was never asked reads NOT CONSULTED; UNAVAILABLE means it was tried and failed.
+  const notConsulted = !notSent && source === "unavailable" && isNotConsulted(detail);
   return (
     <span
-      className={`rounded border px-1.5 py-0.5 font-mono text-[11px] uppercase ${notSent ? SOURCE_STYLES.unavailable : SOURCE_STYLES[source] ?? SOURCE_STYLES.unavailable}`}
+      className={`rounded border px-1.5 py-0.5 font-mono text-[11px] uppercase ${notSent || notConsulted ? SOURCE_STYLES.unavailable : SOURCE_STYLES[source] ?? SOURCE_STYLES.unavailable}`}
       title={detail}
     >
-      {sourceBadgeText(label, source, { notSent })}
+      {sourceBadgeText(label, source, { notSent, notConsulted })}
     </span>
   );
 }
@@ -109,8 +111,11 @@ function Evidence({ entry }: { entry: HistoryEntry }) {
   const { turn, sources, ledger, shipped, perceptionDetail = {} } = entry.response;
   const voiceNotSent = voiceNotSentOf(entry);
   const s = evidenceSummaries(entry.response, entry.hadAudio, voiceNotSent);
+  const noisyText = imageTextView(entry.response).noisy;
   const flagged = new Set<EvidenceKey>(flaggedEvidence(turn.guard));
-  const unavailable = Object.entries(perceptionDetail).filter(([name, detail]) => detail && !(name === "voice" && voiceNotSent));
+  const unavailable = Object.entries(perceptionDetail).filter(
+    ([name, detail]) => detail && !(name === "voice" && voiceNotSent) && !isNotConsulted(detail),
+  );
   return (
     <div className="space-y-3">
       <div className="grid gap-3 md:grid-cols-2">
@@ -119,7 +124,10 @@ function Evidence({ entry }: { entry: HistoryEntry }) {
           <Field label="SAM saw" value={turn.perception.samObjects.join(", ") || "(nothing)"} />
         </EvidenceCard>
         <EvidenceCard title="Text in the image" summary={s.text} flagged={flagged.has("text")}>
-          <Field label={imageTextLabel(sources.vision)} value={turn.perception.imageText ? `"${turn.perception.imageText}"` : "(none read)"} />
+          <Field
+            label={noisyText ? "Unreadable text found" : imageTextLabel(sources.vision)}
+            value={turn.perception.imageText ? `"${turn.perception.imageText}"` : "(none read)"}
+          />
         </EvidenceCard>
         <EvidenceCard title="What was heard" summary={s.voice} flagged={flagged.has("voice")}>
           <Field
@@ -181,13 +189,22 @@ interface Props {
   sending: boolean;
   waited: number;
   shipResult: ShipResponse | null;
+  /** Set by the page so it can scroll the card into view and focus its heading after a turn. */
+  sectionRef?: RefObject<HTMLElement>;
+  headingRef?: RefObject<HTMLHeadingElement>;
 }
 
-export default function ResultPanel({ history, sending, waited, shipResult }: Props) {
+export default function ResultPanel({ history, sending, waited, shipResult, sectionRef, headingRef }: Props) {
   const latest = history[0];
+  const announce = !sending && latest ? `Turn ${latest.response.turn.turn}: ${latest.response.turn.guard?.decision ?? "UNGUARDED"}. ${latest.response.turn.guard?.reason ?? ""}` : "";
   return (
-    <section aria-label="Turn result" className="rounded-2xl border border-line bg-surface p-4 sm:p-5">
-      <h2 className="mb-4 text-base font-bold text-ink">Result</h2>
+    <section ref={sectionRef} aria-label="Turn result" className="scroll-mt-4 rounded-2xl border border-line bg-surface p-4 sm:p-5">
+      <h2 ref={headingRef} tabIndex={-1} className="mb-4 text-base font-bold text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+        Result
+      </h2>
+      <p role="status" aria-live="polite" className="sr-only">
+        {announce}
+      </p>
       {sending ? (
         <div aria-live="polite" aria-busy="true">
           <p className="mb-3 text-base font-semibold text-soft">

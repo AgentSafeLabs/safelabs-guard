@@ -2,10 +2,13 @@
 // four evidence cards. It only reshapes fields the turn response already has.
 // No DOM, so it is unit-tested.
 
+import { detectInjection } from "../guard/injections";
 import { ORDER_1042, STEPS } from "../guard/ledger";
 import type { TurnRecord } from "../agent/types";
 import type { TurnResponse } from "./agent-api";
 import { agentSawText } from "./agent-api";
+import { isNotConsulted } from "./labels";
+import { classifyOcrText } from "./ocr-display";
 
 export type VerdictWord = "ALLOW" | "HOLD" | "BLOCK" | "UNGUARDED" | "SHIPPED";
 export type Tone = "allow" | "hold" | "danger";
@@ -89,17 +92,48 @@ export interface EvidenceSummaries {
   spark: string;
 }
 
-export function evidenceSummaries(response: Pick<TurnResponse, "turn" | "sources">, hadAudio: boolean, voiceNotSent: boolean): EvidenceSummaries {
-  const { turn, sources } = response;
+type SummaryInput = Pick<TurnResponse, "turn" | "sources"> & Partial<Pick<TurnResponse, "securityEvents" | "perceptionDetail">>;
+
+export interface ImageTextView {
+  /** Headline for the "Text in the image" card. */
+  summary: string;
+  /** True when the text was judged recognition noise and moved under Details. */
+  noisy: boolean;
+}
+
+/**
+ * Display only. Noisy OCR text is replaced by "No readable text" in the
+ * headline, unless the text matters: an injection event on the image, a guard
+ * reason that points at the text, or a detector match on the text itself. Then
+ * it is always shown, whatever the classifier says. The guard never sees this.
+ */
+export function imageTextView(response: SummaryInput): ImageTextView {
+  const { turn, sources, securityEvents, perceptionDetail } = response;
+  if (sources.vision === "unavailable") {
+    return { summary: isNotConsulted(perceptionDetail?.vision) ? "Not consulted" : "Unavailable", noisy: false };
+  }
+  const raw = turn.perception.imageText;
+  const { kind, display } = classifyOcrText(raw);
+  if (kind === "none") return { summary: "None found", noisy: false };
+  const matters =
+    Boolean(securityEvents?.some((e) => e.source === "image" || e.source === "both")) ||
+    flaggedEvidence(turn.guard).includes("text") ||
+    detectInjection(raw).detected;
+  if (kind === "noisy" && !matters) return { summary: "No readable text", noisy: true };
+  return { summary: truncate(display), noisy: false };
+}
+
+export function evidenceSummaries(response: SummaryInput, hadAudio: boolean, voiceNotSent: boolean): EvidenceSummaries {
+  const { turn, sources, perceptionDetail } = response;
   const sam = turn.perception.samObjects;
   const spoken = turn.perception.transcript;
   const claimed = turn.sparkDecision.claimedObjects;
   return {
-    camera: sources.sam === "unavailable" ? "Unavailable" : sam.length ? sam.join(", ") : "Nothing detected",
-    text: sources.vision === "unavailable" ? "Unavailable" : (() => {
-      const t = meaningfulText(turn.perception.imageText);
-      return t ? truncate(t) : "None found";
-    })(),
+    camera:
+      sources.sam === "unavailable"
+        ? isNotConsulted(perceptionDetail?.sam) ? "Not consulted" : "Unavailable"
+        : sam.length ? sam.join(", ") : "Nothing detected",
+    text: imageTextView(response).summary,
     voice: voiceNotSent || !hadAudio
       ? "No audio"
       : sources.voice === "unavailable"

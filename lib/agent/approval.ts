@@ -1,7 +1,8 @@
 // Signed SHIP approval tokens (HMAC-SHA256, 5 minute life). The turn route
 // issues one ONLY when guardAction() ALLOWed a SHIP at the SHIP step; the
 // ship route requires it. Stateless: replay within 5 minutes is stopped by the
-// ship route's per-order idempotency, not by the token (single-use needs PR1).
+// ship route's idempotency, which is per approval (one shipment per approval
+// token), not by the token (single-use needs PR1).
 
 import { ORDER_1042 } from "../guard/ledger";
 import { checkSchema, newJti, nowSeconds, signToken, verifySignature, type VerifyResult } from "./signing";

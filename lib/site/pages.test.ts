@@ -51,13 +51,18 @@ describe("/live", () => {
     for (const l of ["Mug", "Notebook", "Cable", "Seal", "Ship"]) expect(copy).toContain(l);
   });
 
-  it("has the Guarded | Unguarded control, restart and helper", () => {
+  it("defaults to guarded, with the unguarded mode behind a collapsed disclosure next to Restart run", () => {
     const radios = tags(page, "button").filter((b) => b.role === "radio");
-    expect(radios.map((r) => r["aria-checked"])).toEqual(["true", "false", "true", "false"]); // mode, then input source
-    expect(copy).toContain("Guarded");
-    expect(copy).toContain("Unguarded");
-    expect(copy).toContain("Changing mode starts a new run.");
+    expect(radios.map((r) => r["aria-checked"])).toEqual(["true", "false"]); // input source only; no mode toggle
+    expect(page).not.toContain('aria-label="Agent mode"');
+    const disclosure = tags(page, "button").find((b) => b["aria-expanded"] !== undefined && b["aria-controls"] === "compare-panel")!;
+    expect(disclosure["aria-expanded"]).toBe("false");
+    expect(copy).toContain("Compare without the guard");
     expect(copy).toContain("Restart run");
+    expect(copy).toContain("Send turn (guarded)");
+    expect(copy).not.toContain("Switch to unguarded");
+    expect(copy).not.toContain("Unguarded: the agent executes whatever it proposes");
+    expect(copy).not.toContain("Back to guarded");
   });
 
   it("has the input toggle and the empty viewport", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SHADOW_LABEL, type SecurityEvent } from "../agent/security-events";
-import { failClosedExplanation, imageTextLabel, injectionBanner, sourceBadgeText } from "./labels";
+import { failClosedExplanation, imageTextLabel, injectionBanner, isNotConsulted, sourceBadgeText } from "./labels";
 
 const event = (source: SecurityEvent["source"], shadow = false): SecurityEvent => ({
   kind: "injection",
@@ -20,6 +20,31 @@ describe("sourceBadgeText", () => {
     expect(sourceBadgeText("Voice", "unavailable")).toBe("VOICE: UNAVAILABLE");
     expect(sourceBadgeText("Voice", "live")).toBe("VOICE: LIVE");
     expect(sourceBadgeText("SAM", "mock")).toBe("SAM: MOCK");
+  });
+});
+
+describe("sourceBadgeText for sources that were never asked", () => {
+  it("shows NOT CONSULTED, not UNAVAILABLE", () => {
+    expect(sourceBadgeText("SAM", "unavailable", { notConsulted: true })).toBe("SAM: NOT CONSULTED");
+    expect(sourceBadgeText("Image text", "unavailable", { notConsulted: true })).toBe("IMAGE TEXT: NOT CONSULTED");
+    expect(sourceBadgeText("Spark", "unavailable", { notConsulted: true })).toBe("SPARK: NOT CONSULTED");
+  });
+
+  it("keeps UNAVAILABLE for a source that was tried and failed", () => {
+    expect(sourceBadgeText("SAM", "unavailable")).toBe("SAM: UNAVAILABLE");
+    expect(sourceBadgeText("Voice", "unavailable", { notConsulted: false })).toBe("VOICE: UNAVAILABLE");
+  });
+
+  it("still says NOT SENT for voice with no clip", () => {
+    expect(sourceBadgeText("Voice", "unavailable", { notSent: true, notConsulted: true })).toBe("VOICE: NOT SENT");
+  });
+});
+
+describe("isNotConsulted", () => {
+  it("matches the fixed not-consulted details only", () => {
+    expect(isNotConsulted("not consulted: perception failed closed")).toBe(true);
+    expect(isNotConsulted("spark not consulted: perception failed closed")).toBe(true);
+    for (const d of ["sam timeout", "ocr error", "spark http_429", "voice error", "", undefined, null]) expect(isNotConsulted(d), String(d)).toBe(false);
   });
 });
 
