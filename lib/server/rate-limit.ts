@@ -4,13 +4,18 @@
 // serverless instance has its own window and its own daily budget, and both
 // reset on cold start. Must move to a durable shared store (PR1).
 //
-//   SAFELABS_RATE_LIMIT_PER_MIN  per-IP requests per sliding minute (default 20)
+//   SAFELABS_RATE_LIMIT_PER_MIN  per-IP requests per sliding minute on routes that
+//                                can spend units: turn, live-check, probe (default 8;
+//                                one guided run is 5 turns). /api/packproof/ship
+//                                spends nothing and has its own bucket (default 20,
+//                                same variable overrides it)
 //   SAFELABS_DAILY_CAP           live Meta calls per UTC day, all callers (default 300)
 //   SAFELABS_LIVE_DISABLED=true  kill switch: routes use mock clients and label
 //                                every source "mock"
 
 const WINDOW_MS = 60_000;
-const DEFAULT_PER_MIN = 20;
+const DEFAULT_PER_MIN = 8;
+const DEFAULT_SHIP_PER_MIN = 20;
 const DEFAULT_DAILY_CAP = 300;
 const MAX_TRACKED_IPS = 10_000;
 
@@ -31,9 +36,12 @@ export interface RateResult {
   retryAfter: number;
 }
 
-export function checkRate(ip: string, now: number = Date.now()): RateResult {
-  const limit = intEnv("SAFELABS_RATE_LIMIT_PER_MIN", DEFAULT_PER_MIN);
-  const key = ip || "unknown";
+/** "billed" routes can spend units; "ship" cannot and is counted separately. */
+export type RateScope = "billed" | "ship";
+
+export function checkRate(ip: string, now: number = Date.now(), scope: RateScope = "billed"): RateResult {
+  const limit = intEnv("SAFELABS_RATE_LIMIT_PER_MIN", scope === "ship" ? DEFAULT_SHIP_PER_MIN : DEFAULT_PER_MIN);
+  const key = scope === "ship" ? `ship:${ip || "unknown"}` : ip || "unknown";
   const recent = (hits.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
   if (recent.length >= limit) {
     hits.set(key, recent);

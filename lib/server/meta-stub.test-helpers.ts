@@ -8,12 +8,65 @@ import { SAM_PROMPT_ALIASES } from "../meta/sam";
 
 export const SECRET = "test-secret-not-real-0123456789abcdef";
 export const FAKE_KEY = "test-key-not-real-abc123";
-export const PNG = new Uint8Array(
-  Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from("FRAMEBYTESFRAMEBYTES")]),
-);
-export const WAV = new Uint8Array(
-  Buffer.concat([Buffer.from("RIFF"), Buffer.alloc(4), Buffer.from("WAVE"), Buffer.from("AUDIOBYTES")]),
-);
+/** PNG signature + IHDR (width x height) + filler: what the upload check needs to see. */
+export function pngBytes(width = 64, height = 48): Uint8Array {
+  const ihdr = Buffer.alloc(25);
+  ihdr.writeUInt32BE(13, 0);
+  ihdr.write("IHDR", 4, "ascii");
+  ihdr.writeUInt32BE(width, 8);
+  ihdr.writeUInt32BE(height, 12);
+  ihdr[16] = 8;
+  return new Uint8Array(
+    Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), ihdr, Buffer.from("FRAMEBYTESFRAMEBYTES")]),
+  );
+}
+
+/** Minimal JPEG: SOI, a SOF0 header, EOI. */
+export function jpegBytes(width = 64, height = 48): Uint8Array {
+  const sof = Buffer.alloc(19);
+  sof.writeUInt16BE(0xffc0, 0);
+  sof.writeUInt16BE(17, 2);
+  sof[4] = 8;
+  sof.writeUInt16BE(height, 5);
+  sof.writeUInt16BE(width, 7);
+  sof[9] = 3;
+  return new Uint8Array(Buffer.concat([Buffer.from([0xff, 0xd8]), sof, Buffer.from([0xff, 0xd9])]));
+}
+
+/** Minimal lossless WebP: RIFF header + VP8L chunk. */
+export function webpBytes(width = 64, height = 48): Uint8Array {
+  const b = Buffer.alloc(30);
+  b.write("RIFF", 0, "ascii");
+  b.writeUInt32LE(22, 4);
+  b.write("WEBPVP8L", 8, "ascii");
+  b.writeUInt32LE(10, 16);
+  b[20] = 0x2f;
+  b.writeUInt32LE(((width - 1) & 0x3fff) | (((height - 1) & 0x3fff) << 14), 21);
+  return new Uint8Array(b);
+}
+
+export const PNG = pngBytes();
+
+/** Mono 16-bit PCM WAV at `rate` Hz with a tiny data chunk. */
+export function wavBytes(rate = 16_000, channels = 1, bits = 16): Uint8Array {
+  const b = Buffer.alloc(44 + 10);
+  b.write("RIFF", 0, "ascii");
+  b.writeUInt32LE(b.length - 8, 4);
+  b.write("WAVEfmt ", 8, "ascii");
+  b.writeUInt32LE(16, 16);
+  b.writeUInt16LE(1, 20);
+  b.writeUInt16LE(channels, 22);
+  b.writeUInt32LE(rate, 24);
+  b.writeUInt32LE((rate * channels * bits) / 8, 28);
+  b.writeUInt16LE((channels * bits) / 8, 32);
+  b.writeUInt16LE(bits, 34);
+  b.write("data", 36, "ascii");
+  b.writeUInt32LE(10, 40);
+  b.write("AUDIOBYTES", 44, "ascii");
+  return new Uint8Array(b);
+}
+
+export const WAV = wavBytes();
 
 export interface Scene {
   /** Objects SAM finds (by concept). */
@@ -102,6 +155,7 @@ export function turnRequest(fields: {
   imageType?: string;
   audio?: Uint8Array;
   extra?: Record<string, string>;
+  origin?: string;
 }): Request {
   const form = new FormData();
   if (fields.mode !== undefined) form.append("mode", fields.mode);
@@ -111,5 +165,9 @@ export function turnRequest(fields: {
   }
   if (fields.audio) form.append("audio", new File([Buffer.from(fields.audio)], "a.wav", { type: "audio/wav" }));
   for (const [k, v] of Object.entries(fields.extra ?? {})) form.append(k, v);
-  return new Request("http://localhost/api/agent/turn", { method: "POST", body: form });
+  return new Request("http://localhost/api/agent/turn", {
+    method: "POST",
+    body: form,
+    headers: fields.origin ? { Origin: fields.origin } : undefined,
+  });
 }

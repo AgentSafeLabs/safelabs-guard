@@ -3,14 +3,17 @@
 // See lib/server/ship.ts.
 
 import { handleShip } from "../../../../lib/server/ship";
-import { assertSafeRuntime } from "../../../../lib/server/runtime-mode";
+import { rejectBadOrigin } from "../../../../lib/server/origin";
+import { assertSafeRuntime, refusalResponse } from "../../../../lib/server/runtime-mode";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(request: Request): Promise<Response> {
-  // Production refuses mock perception (see lib/server/runtime-mode.ts).
+  // Kill switch / production refusal first, then Origin, before the body is read.
   const refusal = assertSafeRuntime(process.env);
-  if (refusal) return Response.json({ error: refusal.error, reason: refusal.reason }, { status: refusal.status });
+  if (refusal) return refusalResponse(refusal);
+  const badOrigin = rejectBadOrigin(request);
+  if (badOrigin) return badOrigin;
   return handleShip(request);
 }

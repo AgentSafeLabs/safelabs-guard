@@ -70,3 +70,13 @@ export function describeRuntime(env: Env): RuntimeDescription {
   }
   return { mode: "live", reason: "SAFELABS_USE_MOCKS=false and all Meta keys are set." };
 }
+
+/**
+ * The 503 a route returns for a refusal. The body is generic (the detail names
+ * env vars and says how this deployment is configured); the detail goes to the
+ * server log only.
+ */
+export function refusalResponse(refusal: RuntimeRefusal): Response {
+  console.error(`runtime refusal: ${refusal.reason}`);
+  return Response.json({ error: refusal.error, reason: "Service unavailable." }, { status: refusal.status });
+}

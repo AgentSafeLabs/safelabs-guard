@@ -42,7 +42,7 @@ describe("production runtime guard on the agent routes", () => {
       expect(res.status).toBe(503);
       expect(await res.json()).toEqual({
         error: "Agent is not configured for production",
-        reason: expect.stringContaining("SAFELABS_USE_MOCKS=false"),
+        reason: "Service unavailable.",
       });
     }
   });

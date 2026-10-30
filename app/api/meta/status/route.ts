@@ -3,13 +3,16 @@
 // GET /api/meta/status?probe=1  -> also makes one tiny call per client and
 //                                   reports the source actually used + error,
 //                                   ONLY with header x-safelabs-admin equal to
-//                                   SAFELABS_ADMIN_TOKEN. Without it (or with the
-//                                   env unset) probe is ignored and no Meta call
-//                                   is made.
+//                                   SAFELABS_ADMIN_TOKEN. Order: kill switch (503),
+//                                   per-IP limit (429), token unset (404), wrong or
+//                                   missing token (403), at most 3 probes per hour
+//                                   per instance (429), daily budget (429). No Meta
+//                                   call is made before all of those pass.
 // Never returns keys, values or prefixes, only whether each key is set.
 
 import { NextResponse } from "next/server";
-import { isAdminRequest } from "../../../../lib/server/admin";
+import { adminState, consumeProbeSlot } from "../../../../lib/server/admin";
+import { checkRate, clientIp, consumeLiveBudget, isLiveDisabled } from "../../../../lib/server/rate-limit";
 import { getSamClient } from "../../../../lib/meta/sam";
 import { getSparkClient } from "../../../../lib/meta/spark";
 import { getVoiceClient } from "../../../../lib/meta/voice";
@@ -42,7 +45,29 @@ function silentWavDataUri(): string {
   return `data:audio/wav;base64,${buf.toString("base64")}`;
 }
 
+function retry(status: number, error: string, retryAfter: number): Response {
+  return NextResponse.json({ error }, { status, headers: { "Retry-After": String(retryAfter) } });
+}
+
+/** Probe errors are shown as one of two fixed words, never as upstream text. */
+function probeError(error: string | undefined): string | null {
+  if (!error) return null;
+  return /timed? ?out|timeout/i.test(error) ? "timeout" : "error";
+}
+
 export async function GET(request: Request) {
+  const wantsProbe = new URL(request.url).searchParams.get("probe") === "1";
+  if (wantsProbe) {
+    if (isLiveDisabled()) return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+    const rate = checkRate(clientIp(request));
+    if (!rate.allowed) return retry(429, "Too many requests", rate.retryAfter);
+    const admin = adminState(request);
+    if (admin === "disabled") return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (admin === "denied") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const slot = consumeProbeSlot();
+    if (!slot.allowed) return retry(429, "Too many probes", slot.retryAfter);
+  }
+
   const spark = getSparkClient();
   const sam = getSamClient();
   const voice = getVoiceClient();
@@ -54,8 +79,11 @@ export async function GET(request: Request) {
     voice: { mode: voice.mode, keySet: Boolean(process.env.META_VOICE_API_KEY) },
   };
 
-  if (new URL(request.url).searchParams.get("probe") !== "1" || !isAdminRequest(request)) {
-    return NextResponse.json(status);
+  if (!wantsProbe) return NextResponse.json(status);
+
+  const liveClients = [spark, sam, voice].filter((c) => c.mode === "live").length;
+  if (liveClients > 0 && !consumeLiveBudget(liveClients)) {
+    return retry(429, "Daily live budget exhausted", 3600);
   }
 
   const [sparkOut, samOut, voiceOut] = await Promise.all([
@@ -67,9 +95,9 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ...status,
     probe: {
-      spark: { source: sparkOut.source, error: sparkOut.error ?? null, objects: sparkOut.objects },
-      sam: { source: samOut.source, error: samOut.error ?? null, verified: samOut.detections.length > 0 },
-      voice: { source: voiceOut.source, error: voiceOut.error ?? null, transcript: voiceOut.transcript },
+      spark: { source: sparkOut.source, error: probeError(sparkOut.error), objects: sparkOut.objects },
+      sam: { source: samOut.source, error: probeError(samOut.error), verified: samOut.detections.length > 0 },
+      voice: { source: voiceOut.source, error: probeError(voiceOut.error), transcript: voiceOut.transcript },
     },
   });
 }
