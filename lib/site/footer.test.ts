@@ -9,6 +9,7 @@ import Live from "../../app/live/page";
 import Scenarios from "../../app/scenarios/page";
 import SiteFooter from "../../components/SiteFooter";
 import { BLOG_URL, REPO_URL } from "../nav/links";
+import { YOUTUBE_ID, YOUTUBE_WATCH_URL } from "./demo-video";
 import { ALSO_BANNED, BANNED, COUNTED_RESULT, render, tags, text } from "./test-utils";
 
 const ROUTES: [route: string, markup: string][] = [
@@ -39,85 +40,83 @@ describe("site footer on every route", () => {
 describe("footer content", () => {
   const copy = text(FOOTER);
 
-  it("has the brand block, tagline and hackathon chip", () => {
-    expect(copy).toContain("Safelabs Guard");
-    expect(copy).toContain("Verify what the agent sees before it acts.");
+  it("has the stacked logo, nothing under it, and the hackathon chip", () => {
+    const img = tags(FOOTER, "img")[0];
+    expect(img.alt).toBe("Safelabs Guard");
+    expect(img.src).toBe("/brand/stacked.png");
+    expect(img.srcSet).toContain("/brand/stacked@2x.png 1100w");
+    expect(copy).not.toContain("Verify what the agent sees before it acts.");
+    const logoColumn = /<img[^>]*>(.*?)<\/div><div class="min-w-0/s.exec(FOOTER)?.[1] ?? "x";
+    expect(text(logoColumn).trim()).toBe("");
     expect(copy).toContain("Built for the Meta Global AI Developer Hackathon");
-    expect(FOOTER).toContain("M12 3l7 3v5"); // the nav's shield path
-    expect(FOOTER).not.toMatch(/<img/);
   });
 
-  it("has the bottom bar with the limits visible", () => {
-    expect(copy).toContain("Built by Safe Labs AI Inc.");
-    expect(copy).toContain("2026");
-    expect(copy).toContain("Shipment is simulated. Hackathon demo.");
+  it("has the copyright line", () => {
+    expect(copy).toContain("© 2026 Safelabs Guard · Built by Waqar Javed, Startup Founder of Safe Labs AI Inc.");
   });
 
-  it("uses a surface-2 background, a border-token top border and 56px/32px padding", () => {
+  it("uses a surface-2 background, a border-token top border and a 1200px container", () => {
     const footer = tags(FOOTER, "footer")[0];
     expect(footer.class).toMatch(/\bborder-t\b/);
     expect(footer.class).toMatch(/\bborder-line\b/);
     expect(footer.class).toMatch(/\bbg-surface-2\b/);
-    expect(FOOTER).toMatch(/max-w-6xl[^"]*\bpb-8\b[^"]*\bpt-14\b/);
+    expect(FOOTER).toMatch(/max-w-\[1200px\]/);
+    expect(FOOTER).toContain("lg:gap-[72px]");
   });
 
-  it("has two labelled nav groups with non-link headings", () => {
-    expect(tags(FOOTER, "nav").map((n) => n["aria-label"])).toEqual(["Product", "Resources"]);
-    const headings = [...FOOTER.matchAll(/<h2[^>]*>(.*?)<\/h2>/gs)].map((m) => m[1]);
-    expect(headings).toEqual(["Product", "Resources"]);
-    expect(FOOTER).not.toMatch(/<h2[^>]*>\s*<a\b/);
-  });
-
-  it("lists the internal links without target or rel", () => {
-    const anchors = tags(FOOTER, "a");
-    const internal = anchors.filter((a) => a.href.startsWith("/"));
-    expect(internal.map((a) => a.href)).toEqual(["/", "/live", "/scenarios", "/#faq"]);
-    for (const a of internal) {
-      expect(a.target).toBeUndefined();
-      expect(a.rel).toBeUndefined();
-    }
-    expect(copy).toMatch(/Home.*Live agent.*Scenarios.*FAQ/);
-  });
-
-  it("opens Blog and GitHub in a new tab with an arrow icon and sr-only text", () => {
-    const external = tags(FOOTER, "a").filter((a) => !a.href.startsWith("/"));
-    expect(external.map((a) => a.href)).toEqual([BLOG_URL, REPO_URL]);
-    for (const a of external) {
+  it("has one link row: Home, Live agent, Scenarios, Demo video, Blog, GitHub", () => {
+    const row = /<nav[^>]*aria-label="Footer"[^>]*>(.*?)<\/nav>/s.exec(FOOTER)![1];
+    expect(text(row)).toMatch(/Home.*Live agent.*Scenarios.*Demo video.*Blog.*GitHub/);
+    const anchors = tags(row, "a");
+    expect(anchors.map((a) => a.href)).toEqual(["/", "/live", "/scenarios", YOUTUBE_WATCH_URL, BLOG_URL, REPO_URL]);
+    for (const a of anchors.filter((x) => !x.href.startsWith("/"))) {
       expect(a.target).toBe("_blank");
       expect(a.rel).toBe("noopener noreferrer");
     }
-    const resources = /<nav[^>]*aria-label="Resources"[^>]*>(.*?)<\/nav>/s.exec(FOOTER)![1];
-    expect(resources.match(/<svg\b/g)).toHaveLength(2);
-    expect(resources.match(/<span class="sr-only">\(opens in a new tab\)<\/span>/g)).toHaveLength(2);
-    expect(copy).toContain("Blog");
-    expect(copy).toContain("Source on GitHub");
+    for (const a of anchors) expect(a.class).toMatch(/\bmin-h-11\b/);
   });
 
-  it("gives every link a 44px row and the accent hover and focus style", () => {
-    const anchors = tags(FOOTER, "a");
-    expect(anchors).toHaveLength(6);
+  it("builds the Demo video link from YOUTUBE_ID", () => {
+    expect(YOUTUBE_WATCH_URL).toBe(`https://www.youtube.com/watch?v=${YOUTUBE_ID}`);
+    expect(tags(FOOTER, "a").some((a) => a.href === `https://www.youtube.com/watch?v=${YOUTUBE_ID}`)).toBe(true);
+  });
+
+  it("has the Built by card with exactly the six profile links", () => {
+    expect(copy).toContain("Built by Waqar Javed");
+    expect(copy).toContain("Startup Founder of Safe Labs AI Inc.");
+    const profiles = /<ul[^>]*aria-label="Profiles"[^>]*>(.*?)<\/ul>/s.exec(FOOTER)![1];
+    const anchors = tags(profiles, "a");
+    expect(anchors.map((a) => a.href)).toEqual([
+      "https://waqarjaved.com/",
+      "https://www.linkedin.com/in/waqarjaved",
+      "https://x.com/iamwaqarjaved",
+      "https://www.youtube.com/@iamwaqarjaved",
+      "https://scholar.google.com/citations?user=RlD1h5gAAAAJ",
+      "https://github.com/iamwaqarjaved",
+    ]);
+    expect(anchors.map((a) => a["aria-label"])).toEqual(["Website, waqarjaved.com", "LinkedIn", "X", "YouTube", "Google Scholar", "GitHub profile"]);
     for (const a of anchors) {
-      expect(a.class).toMatch(/\bmin-h-11\b/);
-      expect(a.class).toMatch(/\btext-soft\b/);
-      expect(a.class).toMatch(/hover:text-accent/);
-      expect(a.class).toMatch(/focus-visible:text-accent/);
-      expect(a.class).toMatch(/hover:underline-offset-4/);
-      expect(a.class).not.toMatch(/(^|\s)underline(\s|$)/); // no underline by default
+      expect(a.target).toBe("_blank");
+      expect(a.rel).toBe("noopener noreferrer");
+      expect(a.class).toMatch(/\bh-11\b/);
+      expect(a.class).toMatch(/\bw-11\b/);
+      expect(a.class).toMatch(/focus-visible:/);
     }
+    expect(profiles.match(/<svg\b/g)).toHaveLength(6);
+    expect(FOOTER).not.toMatch(/facebook|instagram|tiktok/i);
   });
 
-  it("stacks on mobile: single column, two-column link grid, wrapping chip", () => {
-    expect(FOOTER).toMatch(/grid grid-cols-2/);
+  it("stacks on mobile: wrapping link row and card, no horizontal scroll", () => {
+    expect(FOOTER).toMatch(/flex flex-wrap/);
     expect(FOOTER).not.toMatch(/whitespace-nowrap|overflow-x/);
   });
 });
 
 describe("footer anchor", () => {
-  it("/ has one element with id=faq, and the footer links to it", () => {
+  it("/ keeps one element with id=faq", () => {
     const home = ROUTES[0][1];
     expect(home.match(/\sid="faq"/g)).toHaveLength(1);
     expect(tags(home, "section").some((s) => s.id === "faq")).toBe(true);
-    expect(tags(FOOTER, "a").some((a) => a.href === "/#faq")).toBe(true);
   });
 });
 
@@ -130,7 +129,8 @@ describe("claims in the footer", () => {
   }
 
   it("shows no Meta logo and does not imply Meta endorsement", () => {
-    expect(FOOTER).not.toMatch(/<img|<picture|meta-logo|endorse|partner|official|sponsor/i);
+    expect(tags(FOOTER, "img").map((i) => i.src)).toEqual(["/brand/stacked.png"]);
+    expect(FOOTER).not.toMatch(/<picture|meta-logo|endorse|partner|official|sponsor/i);
     expect(copy).not.toMatch(/endorse|partner|official|sponsor|powered by meta|approved by meta/i);
   });
 });

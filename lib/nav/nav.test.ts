@@ -81,16 +81,16 @@ describe("site nav and layout", () => {
     expect(markup).toContain('<nav aria-label="Main"');
     const home = tags(markup, "a")[0];
     expect(home.href).toBe("/");
-    expect(text(markup)).toContain("Safelabs Guard");
-    expect(markup).toContain('aria-hidden="true"');
   });
 
-  it("draws the logo as a shield with a check in accent stroke", () => {
+  it("draws the logo as the wordmark image with a 2x source", () => {
     const markup = html(createElement(SiteNav));
-    expect(markup).toContain('d="M12 3l7 3v5c0 4.6-3 8.3-7 10-4-1.7-7-5.4-7-10V6z"');
-    expect(markup).toContain('d="M8.5 12l2.5 2.5 4.5-5"');
-    expect(markup).toContain('viewBox="0 0 24 24"');
-    expect(markup).toContain('stroke-width="2"');
+    const img = tags(markup, "img")[0];
+    expect(img.alt).toBe("Safelabs Guard");
+    expect(img.src).toBe("/brand/wordmark.png");
+    expect(img.srcSet).toContain("/brand/wordmark@2x.png 1800w");
+    expect(img.class).toMatch(/\bh-10\b/);
+    expect(img.class).toContain("sm:h-[52px]");
   });
 
   it("puts a skip link before the nav in the root layout", () => {

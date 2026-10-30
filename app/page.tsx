@@ -1,22 +1,13 @@
 // Home: what Safelabs Guard is, how a turn is checked, and the FAQ.
 // Server component; the live agent is /live and the mock scenarios /scenarios.
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
+import DemoVideo from "@/components/home/DemoVideo";
 import Faq from "@/components/home/Faq";
-import Pipeline from "@/components/home/Pipeline";
-import {
-  AlertIcon,
-  BoxIcon,
-  CheckIcon,
-  EyeIcon,
-  ShieldCheckIcon,
-  ShieldIcon,
-  SparkleIcon,
-  XIcon,
-} from "@/components/icons";
-import ProgressSegments from "@/components/ProgressSegments";
+import { AlertIcon, CameraIcon, CheckIcon, MicIcon, ShieldCheckIcon } from "@/components/icons";
 import SiteFooter from "@/components/SiteFooter";
-import { STEP_SHORT } from "@/lib/client/progress";
+import { REPO_URL } from "@/lib/nav/links";
 
 export const metadata: Metadata = {
   title: "Safelabs Guard: verify what the agent sees before it acts",
@@ -29,47 +20,83 @@ const btnPrimary =
 const btnSecondary =
   "inline-flex min-h-12 items-center justify-center rounded-xl border border-line-strong bg-surface px-6 text-base font-semibold text-ink hover:bg-chip";
 const card = "rounded-2xl border border-line bg-surface p-5 sm:p-6";
-const h2 = "text-2xl font-bold tracking-tight text-ink sm:text-3xl";
-const chipCls = "inline-flex min-h-11 items-center rounded-full border border-line bg-chip px-4 text-sm text-soft";
+const capsLabel = "text-xs font-bold uppercase tracking-widest text-accent";
+const tile = "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-allow-border bg-allow-bg text-accent";
+const SECTION = "mt-16 lg:mt-[88px]";
 
-function Section({ title, children, id, anchor }: { title: string; children: React.ReactNode; id?: string; anchor?: string }) {
+function Heading({ label, title, sub, id }: { label: string; title: string; sub?: string; id: string }) {
   return (
-    <section id={anchor} className="mt-16 sm:mt-20" aria-labelledby={id}>
-      <h2 id={id} className={`${h2} mb-6`}>
+    <div className="mx-auto mb-10 max-w-2xl text-center">
+      <p className={capsLabel}>{label}</p>
+      <h2 id={id} className="mt-3 text-3xl font-extrabold tracking-tight text-ink sm:text-[40px] sm:leading-[1.1]">
         {title}
       </h2>
-      {children}
-    </section>
+      {sub && <p className="mt-4 text-base text-soft sm:text-lg">{sub}</p>}
+    </div>
   );
 }
 
-function TurnRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function StatusChip({ kind }: { kind: "ALLOW" | "HOLD" }) {
+  return kind === "ALLOW" ? (
+    <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-allow-border bg-allow-bg px-3 text-sm font-bold text-allow-text">
+      <CheckIcon className="h-4 w-4" />
+      ALLOW
+    </span>
+  ) : (
+    <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-hold-border bg-hold-bg px-3 text-sm font-bold text-hold-text">
+      <AlertIcon className="h-4 w-4" />
+      HOLD
+    </span>
+  );
+}
+
+const LEDGER_STEPS = [
+  { n: 1, name: "Mug", note: "Red mug in frame" },
+  { n: 2, name: "Notebook", note: "Blue notebook" },
+  { n: 3, name: "Cable", note: "USB-C cable" },
+  { n: 4, name: "Seal", note: "Box sealed" },
+  { n: 5, name: "Ship", note: "One-time approval" },
+];
+
+function DemoMoment({ accent, title, chip, text }: { accent: "hold" | "allow"; title: string; chip: "ALLOW" | "HOLD"; text: string }) {
+  const bar = accent === "hold" ? "border-l-hold-text" : "border-l-accent";
+  const seg = accent === "hold" ? "bg-hold-text" : "bg-accent";
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-line bg-surface-2 p-3">
-      <span className="mt-0.5 text-accent">{icon}</span>
-      <p className="text-base text-soft">
-        <span className="font-semibold text-ink">{label}:</span> {value}
-      </p>
+    <div className={`${card} border-l-[5px] ${bar}`}>
+      <p className="text-xs font-bold uppercase tracking-widest text-muted">Step 1 of 5 · Verify the mug</p>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-xl font-bold text-ink">{title}</h3>
+        <StatusChip kind={chip} />
+      </div>
+      <p className="mt-3 text-base text-soft">{text}</p>
+      <div className="mt-5 grid grid-cols-5 gap-2" role="img" aria-label={`Progress: step 1 of 5 is ${chip === "HOLD" ? "held" : "allowed"}`}>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className={`h-2 rounded-full ${i === 0 ? seg : "bg-pending"}`} />
+        ))}
+      </div>
     </div>
   );
 }
 
 export default function Home() {
-  const progress = STEP_SHORT.map((label) => ({ label, state: "done" as const, srText: "verified" }));
   return (
     <>
       <main id="content" className="min-h-screen text-ink">
-        <div className="mx-auto max-w-6xl px-4 pb-16 pt-10 sm:px-6 sm:pt-16">
+        <div className="mx-auto max-w-[1200px] px-8 pb-16 pt-10 sm:pt-16">
           {/* Hero */}
-          <section className="grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]" aria-labelledby="hero-title">
-            <div>
-              <p className="inline-flex min-h-8 items-center rounded-full border border-allow-border bg-allow-bg px-3 text-sm font-semibold text-allow-text">
-                Runtime guardrail for multimodal agents
+          <section className="relative grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12" aria-labelledby="hero-title">
+            <div aria-hidden="true" className="hero-glow pointer-events-none absolute -inset-x-8 -inset-y-16 -z-10" />
+            <div className="min-w-0">
+              <p className="inline-flex min-h-8 items-center rounded-full border border-allow-border bg-allow-bg px-3 py-1 text-sm font-semibold text-allow-text">
+                A safety check for AI agents that use cameras and voice
               </p>
-              <h1 id="hero-title" className="mt-5 text-4xl font-black tracking-tight text-ink sm:text-5xl lg:text-6xl">
-                Verify what the agent sees before it acts.
+              <h1 id="hero-title" className="mt-5 text-4xl font-extrabold leading-[1.08] tracking-tight text-ink lg:text-[58px]">
+                Make sure your AI agent saw the right thing before it acts.
               </h1>
-              <p className="mt-4 max-w-xl text-lg text-soft">A deterministic check between your agent and its next action.</p>
+              <p className="mt-5 max-w-xl text-lg text-soft">
+                Safelabs Guard compares what an AI agent sees and hears with your plan. If something is wrong, missing or planted, the agent stops
+                instead of acting.
+              </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link href="/live" className={btnPrimary}>
                   Try the live agent
@@ -78,114 +105,262 @@ export default function Home() {
                   See scenarios
                 </Link>
               </div>
+              <p className="mt-5 text-xs text-muted lg:whitespace-nowrap">
+                Real phone camera · Muse Spark · SAM 3.1 · Muse Voice · Simulated shipment
+              </p>
             </div>
-            <div className={`${card} space-y-3`} aria-label="One turn, in short" role="group">
-              <h2 className="text-lg font-bold text-ink">One turn, in short</h2>
-              <TurnRow icon={<SparkleIcon />} label="Agent proposes" value="Verify the notebook" />
-              <TurnRow icon={<EyeIcon />} label="Evidence" value="Frame shows a mug only" />
-              <div className="flex items-center gap-3 rounded-xl border border-hold-border bg-hold-bg p-3 text-hold-text">
-                <AlertIcon className="h-6 w-6 shrink-0" />
-                <p className="text-base">
-                  <span className="mr-2 font-black tracking-wide">HOLD</span>
-                  They disagree, so nothing runs.
+            <div className="min-w-0">
+              <DemoVideo />
+            </div>
+          </section>
+
+          {/* Why it matters */}
+          <section className={SECTION} aria-label="Why it matters">
+            <div className={`${card} sm:p-8`}>
+              <p className="text-center text-xs font-bold uppercase tracking-widest text-hold-text">Why it matters</p>
+              <div className="mt-6 grid gap-6 md:grid-cols-3 md:gap-8">
+                {[
+                  { title: "Agents can misread", text: "A model may take one object for another, or miss one completely." },
+                  { title: "Hidden orders exist", text: "A sign in the frame or a spoken command can try to steer the agent." },
+                  { title: "Mistakes are costly", text: "A wrong action, like shipping the wrong order, is hard to undo." },
+                ].map((c) => (
+                  <div key={c.title}>
+                    <h3 className="text-lg font-bold text-ink">{c.title}</h3>
+                    <p className="mt-1.5 text-base text-soft">{c.text}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-8 text-center text-base font-semibold text-accent sm:text-lg">
+                Safelabs Guard holds the action until the evidence checks out.
+              </p>
+            </div>
+          </section>
+
+          {/* How it works */}
+          <section className={SECTION} aria-labelledby="how-title">
+            <Heading
+              id="how-title"
+              label="How it works"
+              title="The guard sits between seeing and doing"
+              sub="The agent proposes an action. The guard checks the evidence first. Only a match goes through."
+            />
+            <div className="flex flex-col gap-3 lg:flex-row lg:flex-nowrap lg:items-stretch">
+              <div className={`${card} min-w-0 flex-1`}>
+                <div className="flex gap-2">
+                  <span className={tile}>
+                    <CameraIcon className="h-5 w-5" />
+                  </span>
+                  <span className={tile}>
+                    <MicIcon className="h-5 w-5" />
+                  </span>
+                </div>
+                <p className="mt-5 text-xs font-bold uppercase tracking-widest text-muted">Step 1</p>
+                <h3 className="mt-1 text-xl font-bold text-ink">See and hear</h3>
+                <p className="mt-2 text-base text-soft">
+                  The agent reads the camera frame and any voice clip. SAM 3.1, text reading and Muse Voice turn them into plain evidence.
+                </p>
+              </div>
+              <span className="flex shrink-0 items-center justify-center text-2xl text-muted" aria-hidden="true">
+                <span className="rotate-90 lg:rotate-0">→</span>
+              </span>
+              <div className={`${card} card-mint-strong min-w-0 flex-1 bg-allow-bg`}>
+                <Image src="/brand/icon.png" alt="" width={48} height={48} className="h-12 w-12" />
+                <p className="mt-4 text-xs font-bold uppercase tracking-widest text-accent">Step 2</p>
+                <h3 className="mt-1 text-xl font-bold text-ink">Check the ledger</h3>
+                <p className="mt-2 text-base text-soft">
+                  Plain code compares the evidence with the order&apos;s ledger: mug, notebook, cable, seal, ship. No model decides this step.
+                </p>
+              </div>
+              <span className="flex shrink-0 items-center justify-center text-2xl text-muted" aria-hidden="true">
+                <span className="rotate-90 lg:rotate-0">→</span>
+              </span>
+              <div className={`${card} min-w-0 flex-1`}>
+                <div className="flex flex-wrap gap-2">
+                  <StatusChip kind="ALLOW" />
+                  <StatusChip kind="HOLD" />
+                </div>
+                <p className="mt-5 text-xs font-bold uppercase tracking-widest text-muted">Step 3</p>
+                <h3 className="mt-1 text-xl font-bold text-ink">Allow or hold</h3>
+                <p className="mt-2 text-base text-soft">
+                  A match unlocks the next step. Anything else, or any part unavailable, is held and the action does not run.
                 </p>
               </div>
             </div>
           </section>
 
-          <Section title="How it works" id="how-title">
-            <div className={card}>
-              <Pipeline />
-            </div>
-          </Section>
-
-          <Section title="Same wrong object, two outcomes" id="outcomes-title">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className={card}>
-                <h3 className="text-lg font-bold text-ink">Without the guard</h3>
-                <div className="mt-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-                  <div className="flex min-h-16 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line-strong px-3 text-base text-soft">
-                    <BoxIcon className="h-6 w-6" />
-                    Banana in box
-                  </div>
-                  <span className="self-center text-muted" aria-hidden="true">
-                    →
-                  </span>
-                  <div className="flex min-h-16 flex-1 items-center justify-center gap-2 rounded-xl border border-danger-border bg-danger-bg px-3 text-base font-bold text-danger-text">
-                    <XIcon className="h-6 w-6" />
-                    Advances anyway
-                  </div>
-                </div>
-              </div>
-              <div className={card}>
-                <h3 className="text-lg font-bold text-ink">With Safelabs Guard</h3>
-                <div className="mt-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-                  <div className="flex min-h-16 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line-strong px-3 text-base text-soft">
-                    <BoxIcon className="h-6 w-6" />
-                    Banana in box
-                  </div>
-                  <span className="self-center text-muted" aria-hidden="true">
-                    →
-                  </span>
-                  <div className="flex min-h-16 flex-1 items-center justify-center gap-2 rounded-xl border border-allow-border bg-allow-bg px-3 text-base font-bold text-allow-text">
-                    <ShieldIcon className="h-6 w-6" />
-                    Held. Not a notebook.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Section>
-
-          <Section title="What the guard checks" id="checks-title">
-            <div className="grid gap-4 md:grid-cols-3">
+          {/* The ledger */}
+          <section className={SECTION} aria-labelledby="ledger-title">
+            <Heading
+              id="ledger-title"
+              label="The ledger"
+              title="One verified step at a time"
+              sub="A ledger is a fixed checklist for one order. It says what must be seen, and in what order, before each action is allowed."
+            />
+            <div className="grid gap-4 lg:grid-cols-3">
               {[
-                { icon: <CheckIcon className="h-6 w-6" />, title: "Right object", text: "Matches the order's ledger." },
-                { icon: <AlertIcon className="h-6 w-6" />, title: "Hidden instructions", text: "Signs and spoken commands are flagged." },
-                { icon: <ShieldCheckIcon className="h-6 w-6" />, title: "Fails closed", text: "Any part down means hold." },
+                { label: "What it is", text: "The plan, written down before the agent starts: mug, notebook, cable, seal, then ship." },
+                {
+                  label: "Why it is needed",
+                  text: "An AI model can guess, be fooled or skip ahead. A fixed checklist does not. Plain code compares the evidence with it, so the same input gives the same answer.",
+                },
+                {
+                  label: "Why we use it",
+                  text: "Every decision is easy to explain and audit: the agent was allowed, or held, because the ledger said so.",
+                },
               ].map((c) => (
-                <div key={c.title} className={card}>
-                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-allow-border bg-allow-bg text-accent">
-                    {c.icon}
-                  </span>
-                  <h3 className="mt-4 text-lg font-bold text-ink">{c.title}</h3>
-                  <p className="mt-1 text-base text-soft">{c.text}</p>
+                <div key={c.label} className={card}>
+                  <p className={capsLabel}>{c.label}</p>
+                  <p className="mt-3 text-base text-soft">{c.text}</p>
                 </div>
               ))}
             </div>
-          </Section>
-
-          <Section title="One verified step at a time" id="steps-title">
-            <div className={card}>
-              <ProgressSegments segments={progress} label="Order steps, all verified" />
-            </div>
-          </Section>
-
-          <section className="mt-16 grid gap-4 sm:mt-20 md:grid-cols-2" aria-label="Testing and limits">
-            <div className={card}>
-              <h2 className="text-xl font-bold text-ink">Tested live</h2>
-              <ul className="mt-4 flex flex-wrap gap-2">
-                {["Missing items", "Wrong objects", "Signs in frame", "Spoken commands"].map((t) => (
-                  <li key={t} className={chipCls}>
-                    {t}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className={card}>
-              <h2 className="text-xl font-bold text-ink">Limits</h2>
-              <ul className="mt-4 flex flex-wrap gap-2">
-                {["Shipment simulated", "English voice only", "Hackathon demo"].map((t) => (
-                  <li key={t} className={chipCls}>
-                    {t}
-                  </li>
-                ))}
-              </ul>
+            <div className={`${card} mt-4 sm:p-8`}>
+              <ol className="relative flex flex-col gap-6 lg:grid lg:grid-cols-5 lg:gap-0" aria-label="Order steps">
+                <span
+                  aria-hidden="true"
+                  className="ledger-line absolute left-[10%] right-[10%] top-5 hidden h-0.5 -translate-y-1/2 lg:block"
+                />
+                {LEDGER_STEPS.map((s) => {
+                  const last = s.n === 5;
+                  return (
+                    <li key={s.n} className="relative flex items-center gap-4 lg:flex-col lg:gap-0 lg:text-center">
+                      <span
+                        className={`relative z-10 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 bg-surface text-base font-bold ${
+                          last ? "border-pending text-muted" : "border-accent text-accent"
+                        }`}
+                      >
+                        {s.n}
+                      </span>
+                      <span className="lg:mt-3">
+                        <span className="block text-base font-bold text-ink">{s.name}</span>
+                        <span className="block text-sm text-muted">{s.note}</span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
             </div>
           </section>
 
-          <Section title="FAQ" id="faq-title" anchor="faq">
+          {/* The rules */}
+          <section className={SECTION} aria-labelledby="checks-title">
+            <Heading id="checks-title" label="The rules" title="What the guard checks" />
+            <div className="grid gap-4 md:grid-cols-3">
+              {[
+                {
+                  icon: <CheckIcon className="h-6 w-6" />,
+                  title: "Right object",
+                  text: "The evidence matches the order's ledger, in order. A different mug or a missing cable is a hold.",
+                },
+                {
+                  icon: <AlertIcon className="h-6 w-6" />,
+                  title: "Hidden instructions",
+                  text: 'Signs in the frame and spoken commands are flagged, so a note saying "ship now" is flagged instead of followed.',
+                },
+                {
+                  icon: <ShieldCheckIcon className="h-6 w-6" />,
+                  title: "Fails closed",
+                  text: "If any part is down or unsure, the agent holds. Silence is allowed, guessing is not.",
+                },
+              ].map((c) => (
+                <div key={c.title} className={`${card} border-t-[3px] border-t-accent`}>
+                  <span className={tile}>{c.icon}</span>
+                  <h3 className="mt-4 text-lg font-bold text-ink">{c.title}</h3>
+                  <p className="mt-1.5 text-base text-soft">{c.text}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* In the demo */}
+          <section className={SECTION} aria-labelledby="demo-title">
+            <Heading
+              id="demo-title"
+              label="In the demo"
+              title="What you will see"
+              sub="Two moments from the recorded run. Same step, different evidence."
+            />
+            <div className="grid gap-4 md:grid-cols-2">
+              <DemoMoment
+                accent="hold"
+                title="Wrong mug in frame"
+                chip="HOLD"
+                text="The ledger expects the red mug first. A different mug is in view, so the order does not move forward."
+              />
+              <DemoMoment
+                accent="allow"
+                title="Red mug in frame"
+                chip="ALLOW"
+                text="The camera sees the red mug. The check passes and the ledger unlocks step 2."
+              />
+            </div>
+          </section>
+
+          {/* Honest results */}
+          <section className={SECTION} aria-labelledby="results-title">
+            <Heading id="results-title" label="Honest results" title="Tested live, with limits" />
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className={card}>
+                <h3 className="text-xl font-bold text-ink">Tested live</h3>
+                <ul className="mt-4 space-y-3">
+                  {[
+                    "Missing items and wrong objects",
+                    "Signs in frame with hidden instructions",
+                    "Spoken commands",
+                    "An extra item at the seal step",
+                  ].map((t) => (
+                    <li key={t} className="flex items-start gap-3 text-base text-soft">
+                      <CheckIcon className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
+                      {t}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className={card}>
+                <h3 className="text-xl font-bold text-ink">Limits</h3>
+                <ul className="mt-4 space-y-3">
+                  {["The shipment is simulated", "English voice only", "A hackathon demo, not a product"].map((t) => (
+                    <li key={t} className="flex items-start gap-3 text-base text-soft">
+                      <svg viewBox="0 0 24 24" className="mt-0.5 h-5 w-5 shrink-0 text-hold-text" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" aria-hidden="true" focusable="false">
+                        <path d="M6 12h12" />
+                      </svg>
+                      {t}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <p className="mx-auto mt-6 max-w-3xl text-center text-sm text-muted sm:text-base">
+              The agent&apos;s own model often holds by itself. The guard adds fixed rules that do not depend on the model: ledger order, flagged
+              instructions and an English-only voice allowlist.
+            </p>
+          </section>
+
+          {/* FAQ */}
+          <section id="faq" className={SECTION} aria-labelledby="faq-title">
+            <h2 id="faq-title" className="mb-6 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+              FAQ
+            </h2>
             <Faq />
-          </Section>
+          </section>
+
+          {/* Closing call to action */}
+          <section className={`${SECTION} cta-band flex flex-col gap-6 rounded-[26px] border p-8 sm:p-10 lg:flex-row lg:items-center lg:justify-between`} aria-label="Try it">
+            <div className="min-w-0">
+              <h2 className="text-[28px] font-extrabold leading-tight tracking-tight text-ink sm:text-[34px]">Try it with your own camera.</h2>
+              <p className="mt-3 max-w-xl text-base text-soft sm:text-lg">
+                Show the agent the right and the wrong object and watch what it decides.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link href="/live" className={btnPrimary}>
+                Try the live agent
+              </Link>
+              <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className={btnSecondary}>
+                View on GitHub ↗<span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            </div>
+          </section>
         </div>
       </main>
       <SiteFooter />
