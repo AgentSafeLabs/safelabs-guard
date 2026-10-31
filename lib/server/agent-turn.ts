@@ -29,6 +29,7 @@ import { MockVisionClient, selectVision, type ImageUnderstanding, type VisionExt
 import { MAX_AUDIO_BYTES, MAX_IMAGE_BYTES, MAX_TURN_BODY_BYTES } from "./limits";
 import { checkRate, clientIp, consumeLiveBudget, isLiveDisabled } from "./rate-limit";
 import { inspectImage, isValidWav, readMultipart, sniffImage } from "./request-guard";
+import { TurnTimings } from "./turn-timing";
 
 export { sniffImage };
 export const MAX_UPLOAD_BYTES = MAX_IMAGE_BYTES;
@@ -198,6 +199,7 @@ const DEFAULT_DEPS: TurnDeps = { scan: scanForInjection };
 
 export async function handleTurn(request: Request, deps: TurnDeps = DEFAULT_DEPS): Promise<Response> {
   const startedAt = Date.now();
+  const timings = new TurnTimings();
   const rate = checkRate(clientIp(request));
   if (!rate.allowed) {
     return jsonError(429, "Too many requests", {}, { "Retry-After": String(rate.retryAfter) });
@@ -280,7 +282,7 @@ export async function handleTurn(request: Request, deps: TurnDeps = DEFAULT_DEPS
     let voiceSource: SourceLabel = "unavailable";
     let voiceDetail: PerceptionDetail | null = "voice not sent";
     if (voiceClient && audio) {
-      const heard = await voiceClient.transcribe({ audio }).catch(() => null);
+      const heard = await timings.time("voice", () => voiceClient.transcribe({ audio })).catch(() => null);
       if (heard && heard.source === "live" && !heard.error) {
         transcript = heard.transcript;
         voiceSource = "live";
@@ -331,6 +333,7 @@ export async function handleTurn(request: Request, deps: TurnDeps = DEFAULT_DEPS
         requireLive: !mockMode,
         concepts,
         sparkRetry,
+        timing: timings,
       });
       record = { ...record, turn: turnNumber };
       if (record.sparkDecision.rationale.startsWith("reasoning unavailable")) {
@@ -392,16 +395,20 @@ export async function handleTurn(request: Request, deps: TurnDeps = DEFAULT_DEPS
       turn: turnNumber,
     });
 
-    return Response.json({
-      turn: record,
-      session: token,
-      ledger: { step: session.ledger.step, stepIndex: session.ledger.stepIndex, status: session.ledger.status },
-      shipped: session.shipped,
-      sources,
-      perceptionDetail,
-      securityEvents,
-      ...(approval ? { approval } : {}),
-    });
+    console.info(timings.logLine(mode, turnNumber));
+    return Response.json(
+      {
+        turn: record,
+        session: token,
+        ledger: { step: session.ledger.step, stepIndex: session.ledger.stepIndex, status: session.ledger.status },
+        shipped: session.shipped,
+        sources,
+        perceptionDetail,
+        securityEvents,
+        ...(approval ? { approval } : {}),
+      },
+      { headers: { "Server-Timing": timings.serverTiming() } },
+    );
   } catch (err) {
     if (err instanceof TokenConfigError) return jsonError(503, "Session signing is not configured");
     console.error(`agent turn failed: ${err instanceof Error ? err.name : "unknown"}: ${redact(err instanceof Error ? err.message : "")}`);

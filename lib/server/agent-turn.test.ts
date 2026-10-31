@@ -95,6 +95,19 @@ describe("POST /api/agent/turn: guarded", () => {
     expect(concepts.sort()).toEqual(["banana", "laptop", "red mug"]);
   });
 
+  it("sends Server-Timing and one payload-free log line per turn", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const res = await POST(turnRequest({ mode: "guarded", audio: WAV }));
+    await res.text();
+    const header = res.headers.get("Server-Timing") ?? "";
+    expect(header).toMatch(/^voice;dur=[\d.]+, sam;dur=[\d.]+, ocr;dur=[\d.]+, spark;dur=[\d.]+, guard;dur=[\d.]+, total;dur=[\d.]+$/);
+    const lines = info.mock.calls.map((c) => String(c[0])).filter((l) => l.startsWith("agent turn timing"));
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatch(/^agent turn timing mode=guarded turn=1 voice=\d+ms sam=\d+ms ocr=\d+ms spark=\d+ms guard=\d+ms total=\d+ms$/);
+    expect(header + lines[0]).not.toContain(FAKE_KEY);
+    info.mockRestore();
+  });
+
   it("non-live SAM BLOCKs and does not advance", async () => {
     scene = { objects: ["red mug"], samStatus: 500 };
     const res = await call(turnRequest({ mode: "guarded" }));
