@@ -30,6 +30,11 @@ const DISTRACTOR_COUNT = 2;
 /** Frame reference for fixture-only observations (no real image). */
 const FIXTURE_FRAME = "mock://agent/frame";
 
+/** Optional per-stage timer (lib/server/turn-timing.ts). Sees no payloads, only stage names. */
+export interface StageTimer {
+  time<T>(stage: "sam" | "ocr" | "spark" | "guard", fn: () => T): T;
+}
+
 export interface RunTurnOptions {
   mode: AgentMode;
   sam: SamClient;
@@ -44,6 +49,8 @@ export interface RunTurnOptions {
   concepts?: readonly string[];
   /** One bounded retry of the reasoning call. Same in both modes; omitted = no retry. */
   sparkRetry?: SparkRetryPolicy;
+  /** Per-stage wall-clock timing. Never changes a result. */
+  timing?: StageTimer;
 }
 
 export function createSession(ledger: LedgerState = createLedger()): PackSession {
@@ -87,35 +94,43 @@ export async function runTurn(
   const step = ledgerBefore.step;
   const concepts = [...(options.concepts ?? conceptsFor(getExpectedObjects(step)))];
 
-  // 1. Perceive.
-  let samResult: SamResult | null = null;
-  let samError: string | null = null;
-  try {
-    samResult = await sam.segment({
-      frame: observation.frameDataUrl ?? FIXTURE_FRAME,
-      concepts: [...concepts],
-      mockDetections: observation.frameHint?.objects.map((label, i) => ({
-        label,
-        score: 0.95,
-        box: [40 + i * 120, 80, 100, 100] as [number, number, number, number],
-      })),
-      mockImageText: observation.frameHint?.imageText,
-    });
-    if (samResult.error) samError = redact(samResult.error);
-  } catch (err) {
-    samError = redact(describeError(err));
-  }
+  // 1. Perceive. SAM and the image-text read take the same frame and neither
+  // uses the other's output, so they run together. Each catches its own
+  // failure exactly as before, so the outcome is the same as running in turn.
+  const time: StageTimer["time"] = options.timing ? (stage, fn) => options.timing!.time(stage, fn) : (_stage, fn) => fn();
+  const perceiveSam = async (): Promise<{ result: SamResult | null; error: string | null }> => {
+    try {
+      const result = await time("sam", () =>
+        sam.segment({
+          frame: observation.frameDataUrl ?? FIXTURE_FRAME,
+          concepts: [...concepts],
+          mockDetections: observation.frameHint?.objects.map((label, i) => ({
+            label,
+            score: 0.95,
+            box: [40 + i * 120, 80, 100, 100] as [number, number, number, number],
+          })),
+          mockImageText: observation.frameHint?.imageText,
+        }),
+      );
+      return { result, error: result.error ? redact(result.error) : null };
+    } catch (err) {
+      return { result: null, error: redact(describeError(err)) };
+    }
+  };
+  const perceiveText = async (): Promise<Awaited<ReturnType<ImageUnderstanding["extract"]>>> => {
+    try {
+      return await time("ocr", () => vision.extract(observation));
+    } catch (err) {
+      return { visibleText: "", ok: false, error: describeError(err) };
+    }
+  };
+  const [samOutcome, extract] = await Promise.all([perceiveSam(), perceiveText()]);
+  const samResult = samOutcome.result;
+  const samError = samOutcome.error;
   // The guard checks every label SAM returned; the agent sees only known concepts.
   const samObjects = samResult?.detections.map((d) => d.label) ?? [];
   const samLive = samResult?.source === "live";
   const detectedObjects = buildDetectedObjects(samResult?.detections ?? [], concepts);
-
-  let extract: Awaited<ReturnType<ImageUnderstanding["extract"]>>;
-  try {
-    extract = await vision.extract(observation);
-  } catch (err) {
-    extract = { visibleText: "", ok: false, error: describeError(err) };
-  }
   const imageText = extract.ok ? extract.visibleText : "";
 
   const record = (
@@ -160,25 +175,29 @@ export async function runTurn(
   }
 
   // 2. Decide. Same input in both modes: only the action gate below differs.
-  const decision = await decide(observation, step, reasoning, {
-    visibleText: imageText,
-    detectedObjects,
-    retry: options.sparkRetry,
-  });
+  const decision = await time("spark", () =>
+    decide(observation, step, reasoning, {
+      visibleText: imageText,
+      detectedObjects,
+      retry: options.sparkRetry,
+    }),
+  );
 
   // 3. Act.
   if (!guarded) {
     const executed = executeUnguarded(session, decision.proposedAction);
     return record(decision, null, executed, detectedObjects);
   }
-  const gate = guardAction({
-    ledgerState: ledgerBefore,
-    sparkClaimedObjects: decision.claimedObjects,
-    samDetectedObjects: samObjects,
-    voiceTranscript: observation.transcript,
-    imageText,
-    proposedAction: decision.proposedAction,
-  });
+  const gate = time("guard", () =>
+    guardAction({
+      ledgerState: ledgerBefore,
+      sparkClaimedObjects: decision.claimedObjects,
+      samDetectedObjects: samObjects,
+      voiceTranscript: observation.transcript,
+      imageText,
+      proposedAction: decision.proposedAction,
+    }),
+  );
   const executed = executeGuarded(session, decision.proposedAction, gate);
   return record(decision, { decision: gate.decision, reason: gate.reason }, executed, detectedObjects);
 }
