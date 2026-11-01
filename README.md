@@ -70,6 +70,37 @@ In Unguarded mode there is no decision: the page shows `UNGUARDED` and the agent
 ## Who it's for
 Teams building or running agents that act on camera or voice input, such as warehouse and fulfillment, retail, inspection and robotics. They put Guard in front of the agent's actions and define their own ledger.
 
+## Quick Start
+
+```bash
+git clone https://github.com/AgentSafeLabs/safelabs-guard.git
+cd safelabs-guard
+npm install
+# Copy the env file; it sets SAFELABS_USE_MOCKS=true
+# (mock perception, local demo only). For live calls,
+# set it to false and add the three Meta keys.
+cp .env.example .env.local
+npm run dev
+```
+
+Open http://localhost:3000 for the home page. The live agent is at http://localhost:3000/live and the mock-perception scenarios are at http://localhost:3000/scenarios.
+
+What `npm run dev` does depends on `SAFELABS_USE_MOCKS`:
+
+* `SAFELABS_USE_MOCKS=true` (the value in `.env.example`) is explicit mock mode, for local demos only. Mock perception assumes every frame shows the expected items, so any valid image is allowed on `/live`.
+* Unset (no `.env.local`) and no Meta keys: the dev server does not return 503, because that refusal applies only in production builds (`next start`, Vercel; see [How the live agent works](#how-the-live-agent-works)). `/live` loads, but the clients fall back to mocks and guarded turns fail closed with BLOCK, since perception is not live. `/scenarios` runs on mock perception, as labelled.
+* `SAFELABS_USE_MOCKS=false` with all three Meta keys set is live mode.
+
+## Tech Stack
+
+* **Framework:** Next.js 15 / TypeScript / Tailwind
+* **Reasoning:** Muse Spark
+* **Vision Verification:** SAM 3.1
+* **Image text:** tesseract.js OCR
+* **Voice Verification:** Muse Voice Transcribe
+* **Guard:** Deterministic reconciliation ledger
+* **Tests:** 869 passing, 2 skipped (`npm test`)
+
 ## Status
 A working reference implementation with measured results and known limits (see [Results](#results)). It is not yet a packaged SDK.
 
@@ -257,34 +288,6 @@ Session and approval tokens:
 * Session tokens can be replayed for up to 30 minutes and approvals for 5 minutes. Approval is single-use per approval token: one shipment is created per approval, and repeating the same approval returns that shipment.
 
 Full design: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
-
-## Tech Stack
-
-* **Framework:** Next.js 15 / TypeScript / Tailwind
-* **Reasoning:** Muse Spark
-* **Vision Verification:** SAM 3.1
-* **Image text:** tesseract.js OCR
-* **Voice Verification:** Muse Voice Transcribe
-* **Guard:** Deterministic reconciliation ledger
-* **Tests:** 869 passing, 2 skipped (`npm test`)
-
-## Quick Start
-
-```bash
-git clone https://github.com/AgentSafeLabs/safelabs-guard.git
-cd safelabs-guard
-npm install
-cp .env.example .env.local # sets SAFELABS_USE_MOCKS=true (mock perception, local demo only); for live Meta calls set it to false and add the three Meta keys
-npm run dev
-```
-
-Open http://localhost:3000 for the home page. The live agent is at http://localhost:3000/live and the mock-perception scenarios are at http://localhost:3000/scenarios.
-
-What `npm run dev` does depends on `SAFELABS_USE_MOCKS`:
-
-* `SAFELABS_USE_MOCKS=true` (the value in `.env.example`) is explicit mock mode, for local demos only. Mock perception assumes every frame shows the expected items, so any valid image is allowed on `/live`.
-* Unset (no `.env.local`) and no Meta keys: the dev server does not return 503, because that refusal applies only in production builds (`next start`, Vercel; see [How the live agent works](#how-the-live-agent-works)). `/live` loads, but the clients fall back to mocks and guarded turns fail closed with BLOCK, since perception is not live. `/scenarios` runs on mock perception, as labelled.
-* `SAFELABS_USE_MOCKS=false` with all three Meta keys set is live mode.
 
 ## Routes
 
