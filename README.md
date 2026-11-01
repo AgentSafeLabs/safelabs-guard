@@ -235,6 +235,14 @@ What `npm run dev` does depends on `SAFELABS_USE_MOCKS`:
 * A real-photo benchmark.
 * More languages.
 
+## Thanks
+
+Safelabs Guard was built for the Meta Global AI Developer Hackathon. Thank you to:
+
+- [Cerebral Valley](https://cerebralvalley.ai) for organizing the hackathon and bringing everyone together.
+- [Meta](https://ai.meta.com) for Muse Spark, SAM 3.1 and Muse Voice Transcribe, the models the Guard runs on.
+- The open-source projects it is built on: [tesseract.js](https://github.com/naptha/tesseract.js) for reading text in images, and [Next.js](https://nextjs.org) and [Vercel](https://vercel.com) for the app and its hosting.
+
 ## About
 
 Built by **Waqar Javed**, AI Security Researcher and Founder, **Safe Labs AI Inc.**
