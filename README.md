@@ -43,11 +43,11 @@ Guard does not rely on the model resisting these: it checks the agent's proposal
 Between the agent and the action, Guard runs a fixed check:
 1. Independent perception: SAM 3.1 finds the objects, local text reading (OCR) reads the signs, and Muse Voice transcribes speech.
 2. A fixed ledger of allowed steps defines what must be true at each step.
-3. A deterministic check compares the agent's claim with that evidence. It allows or blocks the action, fails closed on any doubt, and records why.
+3. A deterministic check compares the agent's claim with that evidence. It allows or blocks the action, fails closed on any doubt, and returns the reason.
 
-Guard doesn't replace the agent's own judgment. It is an additional deterministic enforcement layer: detection, a hard stop for unverified actions, and an audit trail. This README does not claim it makes a strong model more resistant to attacks (see [Results](#results)).
+Guard doesn't replace the agent's own judgment. It is an additional deterministic enforcement layer: detection, a hard stop for unverified actions, and a per-turn record with the decision and reason (returned to the caller; the demo does not store it). This README does not claim it makes a strong model more resistant to attacks (see [Results](#results)).
 
-Safelabs Guard sits between a multimodal agent's perception and its action (see the flow diagram at the top of this page). It senses, proposes, verifies and decides: SAM 3.1 and local OCR report what is *actually* in the frame and Muse Voice Transcribe what was *actually* said; Muse Spark reasons over a text report of those three and proposes an action (ADVANCE / SEAL / SHIP / HOLD); the deterministic ledger holds ground truth, which an image or a voice cannot overwrite, and Guard checks the proposal against the same evidence and the ledger; Guard then returns ALLOW, HOLD or BLOCK (see [Decisions](#decisions)), and if the evidence disagrees the proposed action is blocked, with an audit record, before it happens.
+Safelabs Guard sits between a multimodal agent's perception and its action (see the flow diagram at the top of this page). It senses, proposes, verifies and decides: SAM 3.1 and local OCR report what is *actually* in the frame and Muse Voice Transcribe what was *actually* said; Muse Spark reasons over a text report of those three and proposes an action (ADVANCE / SEAL / SHIP / HOLD); the deterministic ledger holds ground truth, which an image or a voice cannot overwrite, and Guard checks the proposal against the same evidence and the ledger; Guard then returns ALLOW, HOLD or BLOCK (see [Decisions](#decisions)), and if the evidence disagrees the proposed action is blocked before it happens, and the turn record carries the reason.
 
 Spark sees only the text perception report; Guard receives the same SAM, OCR and voice evidence directly, plus the ledger and the proposed action. In Unguarded mode the proposed action executes without the Guard box.
 
@@ -164,7 +164,7 @@ All 40 cases (95% Wilson intervals):
 * Held-out split (13 cases, not used to tune detectors): guarded attack success 0/8 (CI 0%-32%) and false block 4/5 (80%), an open problem.
 * `unguarded-naive` is a deliberately weak baseline whose prompt tells the model to obey text in the frame and spoken words. The fair comparison is guarded vs unguarded-prompted.
 * The attacks in the benchmarks were written once, not optimised against this guard.
-* Spark usually holds on its own: the prompted agent without the guard held in 26 of 27 attack cases. So the guard's contribution is detection, a hard stop for unverified actions, and an audit record, not a measured gain in attack resistance. One case, W03 (an extra banana at the cable step), was blocked by the guard and missed by the prompted agent. One case is not a rate.
+* Spark usually holds on its own: the prompted agent without the guard held in 26 of 27 attack cases. So the guard's contribution is detection, a hard stop for unverified actions, and a per-turn decision record, not a measured gain in attack resistance. One case, W03 (an extra banana at the cable step), was blocked by the guard and missed by the prompted agent. One case is not a rate.
 * The guarded agent false-blocks more than the prompted agent (5/13 vs 3/13). The next part says why.
 
 **What the comparison shows.** Without the guard, Spark held in 26 of 27 attack cases. Guard 0/27 vs prompted 1/27 attack success is within the noise of this sample. False blocks rose from 3/13 to 5/13, and 4/5 false blocks on the held-out split is an open problem. W03 (a banana beside the full set at the cable step) is the one case the guard caught that the prompted agent missed. None of this is proof of broad attack resistance.
@@ -201,7 +201,7 @@ Cases: [`data/asi-mm/cases.json`](./data/asi-mm/cases.json). Replay output: [`da
 * Voice is English only, and other languages are blocked as a safe default ("voice unavailable"). Voice is allowlist-based, limited to confirmations and item names, so benign phrases outside the allowlist are blocked (for example "ready to ship"). Silence is allowed: a turn with no voice clip, or a clip with no speech, is not treated as an instruction.
 * Rate limits, the daily cap, the kill switch and shipments are in memory per server instance, not global. The shipment is simulated: no goods, payments or carriers are involved.
 * **Spark does not read pixels.** SAM and OCR are the eyes. Muse Spark reasons over a text perception report built from their output.
-* **Signs and spoken commands.** The guard flags them in both modes (in Unguarded mode as a shadow warning only); in Unguarded mode the agent runs whatever it proposes. In the recorded benchmark, the prompted agent without the guard held on its own in 26 of 27 attack cases (attack success 1/27), the guarded agent in all 27 (0/27), and the weak naive baseline was fooled in 13 of 27. So the guard adds detection, a hard stop and an audit record on top of a model that usually holds by itself.
+* **Signs and spoken commands.** The guard flags them in both modes (in Unguarded mode as a shadow warning only); in Unguarded mode the agent runs whatever it proposes. In the recorded benchmark, the prompted agent without the guard held on its own in 26 of 27 attack cases (attack success 1/27), the guarded agent in all 27 (0/27), and the weak naive baseline was fooled in 13 of 27. So the guard adds detection, a hard stop and a per-turn decision record on top of a model that usually holds by itself.
 * **SAM confidence.** A confidence of 1.00 shown for a live SAM detection is not a real confidence score. The API does not provide one.
 * **Prompt labels.** The label `usb-c cable` is sent to SAM as the alias `usb cable`. The display name is unchanged.
 
@@ -221,6 +221,8 @@ npm run dev
 ```
 
 Open http://localhost:3000 for the home page. The live agent is at http://localhost:3000/live and the mock-perception scenarios are at http://localhost:3000/scenarios.
+
+Integrating the Guard into your own agent: see [docs/INTEGRATION.md](docs/INTEGRATION.md).
 
 What `npm run dev` does depends on `SAFELABS_USE_MOCKS`:
 
@@ -253,4 +255,4 @@ Safelabs Guard is a separate project from safelabs-eval, which tests text agents
 
 Licensed under Apache License 2.0 - see [LICENSE](./LICENSE). Copyright 2026 Safe Labs AI Inc.
 
-More detail: [Request-hardening checks](docs/REQUEST-HARDENING.md) · [Reporting vulnerabilities](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [PackProof status](docs/STATUS.md) · [Technical reference](docs/REFERENCE.md) · [Architecture](docs/ARCHITECTURE.md) · [Benchmark](bench/RESULTS.md).
+More detail: [Integration guide](docs/INTEGRATION.md) · [Request-hardening checks](docs/REQUEST-HARDENING.md) · [Reporting vulnerabilities](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [PackProof status](docs/STATUS.md) · [Technical reference](docs/REFERENCE.md) · [Architecture](docs/ARCHITECTURE.md) · [Benchmark](bench/RESULTS.md).

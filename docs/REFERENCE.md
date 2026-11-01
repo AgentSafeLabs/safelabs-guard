@@ -18,7 +18,7 @@ The ledger state machine can only advance on ALLOW. Model outputs, image text, a
 
 Session and approval tokens:
 * Refreshing the page restarts the run: the session token is held in browser memory only.
-* Session tokens can be replayed for up to 30 minutes and approvals for 5 minutes. Approval is single-use per approval token: one shipment is created per approval, and repeating the same approval returns that shipment.
+* Session tokens can be replayed for up to 30 minutes and approvals for 5 minutes. Approvals are not single-use: within its 5-minute window the same approval returns the same shipment. There is no durable store, so two separate guarded runs each get their own approval and their own shipment.
 
 Full design: [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md)
 
