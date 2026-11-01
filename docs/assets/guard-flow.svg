@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 570" width="1100" height="570" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title id="t">Safelabs Guard flow</title>
+  <desc id="d">Camera and microphone feed SAM 3.1, local OCR and Muse Voice Transcribe. Muse Spark reads a text report and proposes an action. Guard checks the proposal against the same evidence and the ledger, then the outcome is ALLOW, HOLD or BLOCK.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#57606a"/></marker>
+    <marker id="ad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#2563eb"/></marker>
+  </defs>
+  <rect x="0.5" y="0.5" width="1099" height="569" rx="14" fill="#ffffff" stroke="#d0d7de"/>
+
+  <!-- column headers -->
+  <g font-size="12" font-weight="700" letter-spacing="1.5" fill="#8c959f" text-anchor="middle">
+    <text x="257" y="30">1  SENSE</text>
+    <text x="485" y="30">2  PROPOSE</text>
+    <text x="745" y="30">3  VERIFY</text>
+    <text x="1002" y="30">4  DECIDE</text>
+  </g>
+
+  <!-- inputs -->
+  <g font-size="14" fill="#1f2328" text-anchor="middle">
+    <rect x="14" y="120" width="122" height="60" rx="10" fill="#f6f8fa" stroke="#d0d7de"/>
+    <text x="75" y="146" font-weight="600">Camera</text><text x="75" y="165" font-size="12" fill="#656d76">or uploaded image</text>
+    <rect x="14" y="340" width="122" height="60" rx="10" fill="#f6f8fa" stroke="#d0d7de"/>
+    <text x="75" y="366" font-weight="600">Microphone</text><text x="75" y="385" font-size="12" fill="#656d76">recorded audio</text>
+  </g>
+  <g stroke="#57606a" stroke-width="1.6" fill="none" marker-end="url(#a)">
+    <path d="M130 150H150V100H168" marker-end="url(#a)"/>
+    <path d="M150 150V200H168"/>
+    <path d="M130 370H168"/>
+  </g>
+
+  <!-- perception tools -->
+  <g font-size="14" fill="#1e3a8a" text-anchor="middle">
+    <rect x="170" y="60" width="175" height="80" rx="10" fill="#eff6ff" stroke="#bfdbfe"/>
+    <text x="257" y="94" font-weight="700">SAM 3.1</text><text x="257" y="114" font-size="12" fill="#3b5ba5">objects in the frame</text>
+    <rect x="170" y="160" width="175" height="80" rx="10" fill="#eff6ff" stroke="#bfdbfe"/>
+    <text x="257" y="194" font-weight="700">Local OCR</text><text x="257" y="214" font-size="12" fill="#3b5ba5">text in the frame</text>
+    <rect x="170" y="330" width="175" height="80" rx="10" fill="#eff6ff" stroke="#bfdbfe"/>
+    <text x="257" y="364" font-weight="700">Muse Voice Transcribe</text><text x="257" y="384" font-size="12" fill="#3b5ba5">what was said (English only)</text>
+  </g>
+
+  <!-- rail -->
+  <g stroke="#57606a" stroke-width="1.6" fill="none">
+    <path d="M345 100H372"/><path d="M345 200H372"/><path d="M345 370H372"/>
+    <path d="M372 100V410"/>
+    <path d="M372 120H398" marker-end="url(#a)"/>
+  </g>
+  <path d="M372 410H606" stroke="#2563eb" stroke-width="1.8" stroke-dasharray="6 5" fill="none" marker-end="url(#ad)"/>
+  <text x="392" y="398" font-size="12" font-style="italic" fill="#2563eb">same evidence, sent direct</text>
+
+  <!-- Spark -->
+  <g text-anchor="middle">
+    <rect x="400" y="60" width="170" height="120" rx="12" fill="#f5f3ff" stroke="#ddd6fe"/>
+    <text x="485" y="94" font-size="14" font-weight="700" fill="#4c1d95">Muse Spark</text>
+    <text x="485" y="116" font-size="12" fill="#6d4fc2">reads a text report</text>
+    <text x="485" y="132" font-size="12" fill="#6d4fc2">of SAM, OCR and voice</text>
+    <text x="485" y="156" font-size="12" font-weight="600" fill="#4c1d95">proposes ADVANCE, SEAL,</text>
+    <text x="485" y="171" font-size="12" font-weight="600" fill="#4c1d95">SHIP or HOLD</text>
+  </g>
+  <path d="M570 120H606" stroke="#57606a" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+
+  <!-- Guard -->
+  <rect x="610" y="48" width="270" height="384" rx="14" fill="#0f172a"/>
+  <text x="630" y="82" font-size="19" font-weight="800" fill="#ffffff">Safelabs Guard</text>
+  <text x="630" y="102" font-size="12" fill="#94a3b8">deterministic code, not a model</text>
+  <g font-size="13" fill="#e2e8f0">
+    <circle cx="636" cy="140" r="4" fill="#34d399"/><text x="650" y="145">Action legal at this ledger step</text>
+    <circle cx="636" cy="176" r="4" fill="#34d399"/><text x="650" y="181">Objects match the ledger</text>
+    <circle cx="636" cy="212" r="4" fill="#34d399"/><text x="650" y="217">No injection in text or speech</text>
+    <circle cx="636" cy="248" r="4" fill="#34d399"/><text x="650" y="253">Voice is a plain confirmation</text>
+    <circle cx="636" cy="284" r="4" fill="#34d399"/><text x="650" y="289">Fails closed if any input is down</text>
+  </g>
+  <line x1="630" y1="318" x2="860" y2="318" stroke="#334155"/>
+  <text x="630" y="342" font-size="12" fill="#94a3b8">guardAction() then reconcile()</text>
+  <text x="630" y="360" font-size="12" fill="#94a3b8">Only one action is legal per step.</text>
+  <text x="630" y="378" font-size="12" fill="#94a3b8">Anything else cannot run.</text>
+
+  <!-- Ledger -->
+  <rect x="610" y="486" width="270" height="62" rx="12" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="745" y="510" font-size="14" font-weight="700" fill="#1f2328" text-anchor="middle">Ledger: expected state</text>
+  <text x="745" y="530" font-size="11.5" fill="#57606a" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace">MUG → NOTEBOOK → CABLE → SEAL → SHIP</text>
+  <path d="M745 486V436" stroke="#57606a" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+
+  <!-- outcomes -->
+  <g stroke="#57606a" stroke-width="1.6" fill="none">
+    <path d="M880 100H921" marker-end="url(#a)"/><path d="M880 248H921" marker-end="url(#a)"/><path d="M880 396H921" marker-end="url(#a)"/>
+  </g>
+  <g text-anchor="middle">
+    <rect x="925" y="56" width="150" height="88" rx="12" fill="#dcfce7" stroke="#86efac"/>
+    <text x="1000" y="86" font-size="16" font-weight="800" fill="#166534">ALLOW</text>
+    <text x="1000" y="108" font-size="12" fill="#166534">Action runs.</text>
+    <text x="1000" y="124" font-size="12" fill="#166534">Ledger advances.</text>
+    <rect x="925" y="204" width="150" height="88" rx="12" fill="#fef3c7" stroke="#fcd34d"/>
+    <text x="1000" y="234" font-size="16" font-weight="800" fill="#92400e">HOLD</text>
+    <text x="1000" y="256" font-size="12" fill="#92400e">The agent chose to hold.</text>
+    <text x="1000" y="272" font-size="12" fill="#92400e">Nothing runs.</text>
+    <rect x="925" y="352" width="150" height="88" rx="12" fill="#fee2e2" stroke="#fca5a5"/>
+    <text x="1000" y="382" font-size="16" font-weight="800" fill="#991b1b">BLOCK</text>
+    <text x="1000" y="404" font-size="12" fill="#991b1b">The Guard refused it.</text>
+    <text x="1000" y="420" font-size="12" fill="#991b1b">Nothing runs. Logged.</text>
+  </g>
+
+  <!-- unguarded note -->
+  <rect x="20" y="486" width="570" height="62" rx="12" fill="#fffbeb" stroke="#fcd34d" stroke-dasharray="5 4"/>
+  <text x="38" y="512" font-size="13" font-weight="700" fill="#92400e">Unguarded mode skips step 3.</text>
+  <text x="38" y="532" font-size="12.5" fill="#92400e">The proposed action runs as is, so a wrong object or injected command can get through.</text>
+</svg>
