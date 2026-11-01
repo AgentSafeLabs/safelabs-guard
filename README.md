@@ -1,3 +1,17 @@
+<p align="center"><img src="docs/assets/guard-logo.png" alt="Safelabs Guard" width="480"></p>
+
+<p align="center">
+<a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue" alt="License: Apache-2.0"></a>
+<img src="https://img.shields.io/badge/Next.js-15-black?logo=nextdotjs&logoColor=white" alt="Next.js 15">
+<img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" alt="TypeScript 5">
+<img src="https://img.shields.io/badge/Vercel-deployed-black?logo=vercel&logoColor=white" alt="Vercel">
+<img src="https://img.shields.io/badge/Muse%20Spark-reasoning-lightgrey" alt="Muse Spark">
+<img src="https://img.shields.io/badge/SAM-3.1-lightgrey" alt="SAM 3.1">
+<img src="https://img.shields.io/badge/Muse%20Voice-Transcribe-lightgrey" alt="Muse Voice Transcribe">
+<img src="https://img.shields.io/badge/tesseract.js-7.0.0-lightgrey" alt="tesseract.js">
+<img src="https://img.shields.io/badge/Meta%20AI%20Developer%20Hackathon-2026-lightgrey" alt="Meta AI Developer Hackathon 2026">
+</p>
+
 # Safelabs Guard
 
 **Safelabs Guard is a security checkpoint for AI agents.** It checks what an agent sees and hears, and what it plans to do, before it is allowed to take an important action. If the evidence doesn't match, the action is blocked, so an agent that has been tricked can't act on it.
@@ -231,4 +245,4 @@ Safelabs Guard is a separate project from safelabs-eval, which tests text agents
 
 Licensed under Apache License 2.0 - see [LICENSE](./LICENSE). Copyright 2026 Safe Labs AI Inc.
 
-More detail: [Security checks](docs/SECURITY.md) · [PackProof status](docs/STATUS.md) · [Technical reference](docs/REFERENCE.md) · [Architecture](docs/ARCHITECTURE.md) · [Benchmark](bench/RESULTS.md).
+More detail: [Request-hardening checks](docs/REQUEST-HARDENING.md) · [Reporting vulnerabilities](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [PackProof status](docs/STATUS.md) · [Technical reference](docs/REFERENCE.md) · [Architecture](docs/ARCHITECTURE.md) · [Benchmark](bench/RESULTS.md).
