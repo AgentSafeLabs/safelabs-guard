@@ -16,11 +16,11 @@
 
 SafeLabs Guard is a security checkpoint for AI agents. It checks the evidence an agent receives and the action it proposes before an important action is allowed to run. If the evidence does not match, the action is blocked, so an agent that has been tricked cannot act on it.
 
-[Live demo](https://guard.agentsafelabs.com/live) | [Demo video](https://www.youtube.com/watch?v=thHwl6IJM7Y) | [Website](https://guard.agentsafelabs.com)
+[Try Live PackProof Demo](https://guard.agentsafelabs.com/live) | [Watch Product Explainer](https://youtu.be/thHwl6IJM7Y) | [Visit SafeLabs Guard Website](https://guard.agentsafelabs.com/) | [Explore Source Code](https://github.com/AgentSafeLabs/safelabs-guard)
 
 Built for the Meta Global AI Developer Hackathon by **Safe Labs AI Inc.** (Oct 26 - Nov 4, 2026).
 
-Status: a working reference implementation with measured results and known limits (see [Evaluation](#evaluation-and-benchmark-results) and [Limitations](#limitations-and-known-issues)). TypeScript is the reference implementation; an alpha Python port of the guard core is available (see [Integration and Security](#integration-and-security)). There is no packaged SDK for the full agent.
+Status: a working reference implementation with measured results and known limits (see [Evaluation](#evaluation-and-benchmark-results) and [Limitations](#limitations-and-known-issues)). TypeScript is the reference implementation; an alpha Python port of the guard core is available (see [Integration and Python Port](#integration-and-python-port)). There is no packaged SDK for the full agent.
 
 ## Table of Contents
 
@@ -32,15 +32,18 @@ Status: a working reference implementation with measured results and known limit
 6. [Limitations and Known Issues](#limitations-and-known-issues)
 7. [Who Is It For?](#who-is-it-for)
 8. [Quick Start](#quick-start)
-9. [Integration and Security](#integration-and-security)
-10. [Roadmap](#roadmap)
-11. [Contributing, License and Acknowledgements](#contributing-license-and-acknowledgements)
+9. [Integration and Python Port](#integration-and-python-port)
+10. [Security and Request Hardening](#security-and-request-hardening)
+11. [Roadmap](#roadmap)
+12. [Contributing, License and Acknowledgements](#contributing-license-and-acknowledgements)
 
 Documentation: [Integration guide](docs/INTEGRATION.md) · [Request-hardening checks](docs/REQUEST-HARDENING.md) · [Reporting vulnerabilities](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [PackProof status](docs/STATUS.md) · [Technical reference](docs/REFERENCE.md) · [Architecture](docs/ARCHITECTURE.md) · [Benchmark](bench/RESULTS.md) · [Demo runs](docs/DEMO-RUNS.md) · [Limits](docs/LIMITS.md) · [Configuration](docs/CONFIGURATION.md).
 
 ## Overview
 
 **PackProof** is a companion AI testing agent developed by AgentSafeLabs and included in this repository. It packs ORDER-1042 (1x Red Mug, 1x Blue Notebook, 1x USB-C Cable) in five steps: mug, notebook, cable, seal, ship. **SafeLabs Guard is the security product protecting it.**
+
+**Python availability:** An alpha Python port of the deterministic Guard core is available on [PyPI](https://pypi.org/project/safelabs-guard/). The TypeScript implementation remains the reference implementation. The Python port does not include the live multimodal service or the PackProof agent. Installation: [Integration and Python Port](#integration-and-python-port).
 
 ## The Problem
 
@@ -113,6 +116,15 @@ More walkthroughs (normal work allowed, printed and split injections, a missing 
 
 The main result is a 40-case recorded-response benchmark (`bench/`): real Meta responses recorded once with synthetic images and macOS text-to-speech audio, then replayed offline through the real agent loop. It is not a fresh live-model run, and the samples are small, so the intervals are wide.
 
+| Result | Figure |
+| :--- | :--- |
+| Guarded attack success (recorded-response cases) | 0 / 27 |
+| Guarded false blocks | 5 / 13 |
+| Prompted agent holding under the same attacks | 26 / 27 |
+| Injection scanner detections | 13 / 17 |
+
+These figures describe this demo only (ORDER-1042, small recorded samples). 0 / 27 is not evidence of general attack prevention.
+
 * **Guarded** (PackProof prompt + guard): attack success **0/27 (0%, CI 0%-12%)**; false block 5/13 (38%, CI 18%-64%).
 * The prompted agent without the guard held in 26 of 27 attack cases (attack success 1/27 (4%, CI 1%-18%); false block 3/13 (23%, CI 8%-50%)). So the guard's contribution is detection, a hard stop for unverified actions, and a per-turn decision record, not a measured gain in attack resistance. W03 (an extra banana at the cable step) is the one case the guard caught that the prompted agent missed; one case is not a rate.
 * **Injection scanner detection** (not overall attack prevention): hits on 13/17 injection cases (76%) and false flags on 0/23 (0%).
@@ -140,7 +152,7 @@ Teams building or running agents that act on camera or voice input, such as ware
 
 ## Quick Start
 
-869 tests passing, 2 skipped (`npm test`).
+Test status as of release v0.1.0: 869 passing, 2 skipped (`npm test`).
 
 ```bash
 git clone https://github.com/AgentSafeLabs/safelabs-guard.git
@@ -161,9 +173,9 @@ Open http://localhost:3000/live for the live agent.
 
 All variables and modes: [Configuration](docs/CONFIGURATION.md).
 
-Only want the guard core? Install the Python port with `pip install safelabs-guard` (see [Integration and Security](#integration-and-security)).
+Only want the guard core? Install the Python port with `pip install safelabs-guard` (see [Integration and Python Port](#integration-and-python-port)).
 
-## Integration and Security
+## Integration and Python Port
 
 **Integration.** This repository is the TypeScript reference implementation, not a packaged SDK. A Python port of the guard core is published separately (below). See the [Integration guide](docs/INTEGRATION.md).
 
@@ -185,7 +197,9 @@ if gate.decision == "ALLOW":
 
 Scope: this is an alpha, reference port of the deterministic guard core only (ledger, reconcile, injection checks, action gate). It does not include the live service, the PackProof demo agent, or any Muse Spark, SAM 3.1 or Muse Voice calls; the caller supplies the claimed objects, detected objects, transcript and image text. More in the [Python port section of the Integration guide](docs/INTEGRATION.md#10-python-port-alpha).
 
-**Security.** Request limits and a scripted abuse test are in [Request-hardening checks](docs/REQUEST-HARDENING.md); they are not a security audit or a penetration test. Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
+## Security and Request Hardening
+
+Request limits and a scripted abuse test are in [Request-hardening checks](docs/REQUEST-HARDENING.md); they are not a security audit or a penetration test. Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 
 ## Roadmap
 
