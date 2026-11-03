@@ -50,7 +50,7 @@ export function DemoVideoFrame({ playing, onPlay, iframeRef }: { playing: boolea
         </svg>
       </span>
       <span aria-hidden="true" className="absolute bottom-3 right-3 rounded-md bg-black/75 px-2 py-0.5 text-sm font-semibold text-white">
-        3:10
+        3:00
       </span>
     </button>
   );

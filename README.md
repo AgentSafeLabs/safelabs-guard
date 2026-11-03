@@ -148,7 +148,7 @@ The full list: [Limits](docs/LIMITS.md).
 
 ## Who Is It For?
 
-Teams building or running agents that act on camera or voice input, such as warehouse and fulfillment, retail, inspection and robotics. They put Guard in front of the agent's actions and define their own ledger.
+Teams building or running agents that act on camera or voice input, such as warehouse and fulfillment, retail, inspection and robotics. The pattern can be adapted to such agents by putting Guard in front of their actions. The shipped ledger is fixed to ORDER-1042, and configurable ledgers are on the roadmap.
 
 ## Quick Start
 

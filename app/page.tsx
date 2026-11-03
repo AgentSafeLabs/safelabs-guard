@@ -5,14 +5,14 @@ import Image from "next/image";
 import Link from "next/link";
 import DemoVideo from "@/components/home/DemoVideo";
 import Faq from "@/components/home/Faq";
-import { AlertIcon, CameraIcon, CheckIcon, MicIcon, ShieldCheckIcon } from "@/components/icons";
+import { AlertIcon, CameraIcon, CheckIcon, MicIcon, ShieldCheckIcon, XIcon } from "@/components/icons";
 import SiteFooter from "@/components/SiteFooter";
 import { REPO_URL } from "@/lib/nav/links";
 
 export const metadata: Metadata = {
   title: "SafeLabs Guard: verify what the agent sees before it acts",
   description:
-    "A deterministic check between a camera and voice agent and its next action. It holds the action when the proposal and the evidence disagree.",
+    "A deterministic check between a camera and voice agent and its next action. It blocks the action when the proposal and the evidence disagree.",
 };
 
 const btnPrimary =
@@ -36,7 +36,15 @@ function Heading({ label, title, sub, id }: { label: string; title: string; sub?
   );
 }
 
-function StatusChip({ kind }: { kind: "ALLOW" | "HOLD" }) {
+function StatusChip({ kind }: { kind: "ALLOW" | "HOLD" | "BLOCK" }) {
+  if (kind === "BLOCK") {
+    return (
+      <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-danger-border bg-danger-bg px-3 text-sm font-bold text-danger-text">
+        <XIcon className="h-4 w-4" />
+        BLOCK
+      </span>
+    );
+  }
   return kind === "ALLOW" ? (
     <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-allow-border bg-allow-bg px-3 text-sm font-bold text-allow-text">
       <CheckIcon className="h-4 w-4" />
@@ -55,12 +63,12 @@ const LEDGER_STEPS = [
   { n: 2, name: "Notebook", note: "Blue notebook" },
   { n: 3, name: "Cable", note: "USB-C cable" },
   { n: 4, name: "Seal", note: "Box sealed" },
-  { n: 5, name: "Ship", note: "One-time approval" },
+  { n: 5, name: "Ship", note: "Signed shipment approval" },
 ];
 
-function DemoMoment({ accent, title, chip, text }: { accent: "hold" | "allow"; title: string; chip: "ALLOW" | "HOLD"; text: string }) {
-  const bar = accent === "hold" ? "border-l-hold-text" : "border-l-accent";
-  const seg = accent === "hold" ? "bg-hold-text" : "bg-accent";
+function DemoMoment({ accent, title, chip, text }: { accent: "block" | "allow"; title: string; chip: "ALLOW" | "BLOCK"; text: string }) {
+  const bar = accent === "block" ? "border-l-danger-text" : "border-l-accent";
+  const seg = accent === "block" ? "bg-danger-text" : "bg-accent";
   return (
     <div className={`${card} border-l-[5px] ${bar}`}>
       <p className="text-xs font-bold uppercase tracking-widest text-muted">Step 1 of 5 · Verify the mug</p>
@@ -69,7 +77,7 @@ function DemoMoment({ accent, title, chip, text }: { accent: "hold" | "allow"; t
         <StatusChip kind={chip} />
       </div>
       <p className="mt-3 text-base text-soft">{text}</p>
-      <div className="mt-5 grid grid-cols-5 gap-2" role="img" aria-label={`Progress: step 1 of 5 is ${chip === "HOLD" ? "held" : "allowed"}`}>
+      <div className="mt-5 grid grid-cols-5 gap-2" role="img" aria-label={`Progress: step 1 of 5 is ${chip === "BLOCK" ? "blocked" : "allowed"}`}>
         {[0, 1, 2, 3, 4].map((i) => (
           <div key={i} className={`h-2 rounded-full ${i === 0 ? seg : "bg-pending"}`} />
         ))}
@@ -88,14 +96,14 @@ export default function Home() {
             <div aria-hidden="true" className="hero-glow pointer-events-none absolute -inset-x-8 -inset-y-16 -z-10" />
             <div className="min-w-0">
               <p className="inline-flex min-h-8 items-center rounded-full border border-allow-border bg-allow-bg px-3 py-1 text-sm font-semibold text-allow-text">
-                A safety check for AI agents that use cameras and voice
+                Independent action validation for multimodal AI agents
               </p>
               <h1 id="hero-title" className="mt-5 text-4xl font-extrabold leading-[1.08] tracking-tight text-ink lg:text-[58px]">
                 Make sure your AI agent saw the right thing before it acts.
               </h1>
               <p className="mt-5 max-w-xl text-lg text-soft">
-                SafeLabs Guard compares what an AI agent sees and hears with your plan. If something is wrong, missing or planted, the agent stops
-                instead of acting.
+                SafeLabs Guard independently checks an AI agent&apos;s proposed action against visual and voice evidence and a predefined workflow
+                ledger. If the evidence does not support the action, Guard prevents it from executing.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link href="/live" className={btnPrimary}>
@@ -131,7 +139,7 @@ export default function Home() {
                 ))}
               </div>
               <p className="mt-8 text-center text-base font-semibold text-accent sm:text-lg">
-                SafeLabs Guard holds the action until the evidence checks out.
+                SafeLabs Guard validates the proposed action before allowing it to proceed.
               </p>
             </div>
           </section>
@@ -142,7 +150,7 @@ export default function Home() {
               id="how-title"
               label="How it works"
               title="The guard sits between seeing and doing"
-              sub="The agent proposes an action. The guard checks the evidence first. Only a match goes through."
+              sub="The agent proposes an action. SafeLabs Guard independently checks it against the evidence and ledger. Only a validated action proceeds."
             />
             <div className="flex flex-col gap-3 lg:flex-row lg:flex-nowrap lg:items-stretch">
               <div className={`${card} min-w-0 flex-1`}>
@@ -157,7 +165,7 @@ export default function Home() {
                 <p className="mt-5 text-xs font-bold uppercase tracking-widest text-muted">Step 1</p>
                 <h3 className="mt-1 text-xl font-bold text-ink">See and hear</h3>
                 <p className="mt-2 text-base text-soft">
-                  The agent reads the camera frame and any voice clip. SAM 3.1, text reading and Muse Voice turn them into plain evidence.
+                  SAM 3.1, local OCR and Muse Voice process camera and audio inputs into perception evidence.
                 </p>
               </div>
               <span className="flex shrink-0 items-center justify-center text-2xl text-muted" aria-hidden="true">
@@ -166,9 +174,9 @@ export default function Home() {
               <div className={`${card} card-mint-strong min-w-0 flex-1 bg-allow-bg`}>
                 <Image src="/brand/icon.png" alt="" width={48} height={48} className="h-12 w-12" />
                 <p className="mt-4 text-xs font-bold uppercase tracking-widest text-accent">Step 2</p>
-                <h3 className="mt-1 text-xl font-bold text-ink">Check the ledger</h3>
+                <h3 className="mt-1 text-xl font-bold text-ink">Propose and verify</h3>
                 <p className="mt-2 text-base text-soft">
-                  Plain code compares the evidence with the order&apos;s ledger: mug, notebook, cable, seal, ship. No model decides this step.
+                  Muse Spark proposes an action. SafeLabs Guard independently checks that proposal against the perception evidence and expected ledger state using deterministic code.
                 </p>
               </div>
               <span className="flex shrink-0 items-center justify-center text-2xl text-muted" aria-hidden="true">
@@ -178,12 +186,21 @@ export default function Home() {
                 <div className="flex flex-wrap gap-2">
                   <StatusChip kind="ALLOW" />
                   <StatusChip kind="HOLD" />
+                  <StatusChip kind="BLOCK" />
                 </div>
                 <p className="mt-5 text-xs font-bold uppercase tracking-widest text-muted">Step 3</p>
-                <h3 className="mt-1 text-xl font-bold text-ink">Allow or hold</h3>
-                <p className="mt-2 text-base text-soft">
-                  A match unlocks the next step. Anything else, or any part unavailable, is held and the action does not run.
-                </p>
+                <h3 className="mt-1 text-xl font-bold text-ink">Allow, hold or block</h3>
+                <ul className="mt-2 space-y-2 text-base text-soft">
+                  <li>
+                    <span className="font-bold text-allow-text">ALLOW:</span> The proposed action passes validation.
+                  </li>
+                  <li>
+                    <span className="font-bold text-hold-text">HOLD:</span> The agent chooses to wait. Nothing executes.
+                  </li>
+                  <li>
+                    <span className="font-bold text-danger-text">BLOCK:</span> Guard refuses an invalid or unverifiable action. Nothing executes.
+                  </li>
+                </ul>
               </div>
             </div>
           </section>
@@ -201,11 +218,11 @@ export default function Home() {
                 { label: "What it is", text: "The plan, written down before the agent starts: mug, notebook, cable, seal, then ship." },
                 {
                   label: "Why it is needed",
-                  text: "An AI model can guess, be fooled or skip ahead. A fixed checklist does not. Plain code compares the evidence with it, so the same input gives the same answer.",
+                  text: "An AI model can guess, be fooled or skip ahead. A fixed checklist does not. Plain code compares the evidence with it. The same evidence, proposed action and ledger state produce the same deterministic Guard decision.",
                 },
                 {
                   label: "Why we use it",
-                  text: "Every decision is easy to explain and audit: the agent was allowed, or held, because the ledger said so.",
+                  text: "Every decision is explainable and auditable: an action is allowed, held or blocked based on the proposed action, available evidence and ledger state.",
                 },
               ].map((c) => (
                 <div key={c.label} className={card}>
@@ -250,17 +267,17 @@ export default function Home() {
                 {
                   icon: <CheckIcon className="h-6 w-6" />,
                   title: "Right object",
-                  text: "The evidence matches the order's ledger, in order. A different mug or a missing cable is a hold.",
+                  text: "A different object or missing required item causes Guard to block the proposed action.",
                 },
                 {
                   icon: <AlertIcon className="h-6 w-6" />,
                   title: "Hidden instructions",
-                  text: 'Signs in the frame and spoken commands are flagged, so a note saying "ship now" is flagged instead of followed.',
+                  text: 'Configured detection rules inspect image text and spoken instructions for suspicious commands.',
                 },
                 {
                   icon: <ShieldCheckIcon className="h-6 w-6" />,
                   title: "Fails closed",
-                  text: "If any part is down or unsure, the agent holds. Silence is allowed, guessing is not.",
+                  text: "If a required input is unavailable or validation cannot be completed, Guard blocks the proposed action. Voice is optional; silence is allowed.",
                 },
               ].map((c) => (
                 <div key={c.title} className={`${card} border-t-[3px] border-t-accent`}>
@@ -278,14 +295,14 @@ export default function Home() {
               id="demo-title"
               label="In the demo"
               title="What you will see"
-              sub="Two moments from the recorded run. Same step, different evidence."
+              sub="Two examples from the same workflow. Different evidence, different outcomes."
             />
             <div className="grid gap-4 md:grid-cols-2">
               <DemoMoment
-                accent="hold"
+                accent="block"
                 title="Wrong mug in frame"
-                chip="HOLD"
-                text="The ledger expects the red mug first. A different mug is in view, so the order does not move forward."
+                chip="BLOCK"
+                text="The ledger expects the red mug first. A different mug is in view, so Guard blocks the proposed action and the ledger does not advance."
               />
               <DemoMoment
                 accent="allow"
@@ -315,11 +332,14 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
+                <p className="mt-4 text-sm text-muted">
+                  Demonstration scenarios represent individual test runs, not statistically established performance rates.
+                </p>
               </div>
               <div className={card}>
                 <h3 className="text-xl font-bold text-ink">Limits</h3>
                 <ul className="mt-4 space-y-3">
-                  {["The shipment is simulated", "English voice only", "A hackathon demo, not a product"].map((t) => (
+                  {["The shipment is simulated", "English voice only", "Working hackathon reference implementation; not yet production-validated"].map((t) => (
                     <li key={t} className="flex items-start gap-3 text-base text-soft">
                       <svg viewBox="0 0 24 24" className="mt-0.5 h-5 w-5 shrink-0 text-hold-text" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" aria-hidden="true" focusable="false">
                         <path d="M6 12h12" />

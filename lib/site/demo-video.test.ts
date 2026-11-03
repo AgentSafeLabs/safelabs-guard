@@ -24,9 +24,9 @@ describe("demo video card", () => {
     expect(tags(card, "img").every((i) => !/^https?:/.test(i.src ?? ""))).toBe(true);
   });
 
-  it("shows the poster image from /brand, with the 3:10 badge", () => {
+  it("shows the poster image from /brand, with the 3:00 badge", () => {
     expect(card).toContain("demo-poster.jpg");
-    expect(card).toContain("3:10");
+    expect(card).toContain("3:00");
   });
 
   it("links to YouTube in a new tab with noopener noreferrer", () => {

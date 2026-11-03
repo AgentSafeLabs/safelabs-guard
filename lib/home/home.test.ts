@@ -28,10 +28,10 @@ describe("home page /", () => {
   });
 
   it("has the hero copy and both calls to action", () => {
-    expect(copy).toContain("A safety check for AI agents that use cameras and voice");
+    expect(copy).toContain("Independent action validation for multimodal AI agents");
     expect(page).toMatch(/<h1[^>]*>Make sure your AI agent saw the right thing before it acts\.<\/h1>/);
     expect(copy).toContain(
-      "SafeLabs Guard compares what an AI agent sees and hears with your plan. If something is wrong, missing or planted, the agent stops instead of acting.",
+      "SafeLabs Guard independently checks an AI agent's proposed action against visual and voice evidence and a predefined workflow ledger. If the evidence does not support the action, Guard prevents it from executing.",
     );
     const links = tags(page, "a");
     expect(links.find((a) => a.href === "/live" && /min-h-12/.test(a.class))).toBeDefined();
@@ -56,17 +56,17 @@ describe("home page /", () => {
     expect(page).not.toContain("<iframe");
     expect(copy).toContain("Watch the 3-minute demo");
     expect(copy).toContain("A packing agent, a real phone camera, five checks. Plays right here.");
-    expect(copy).toContain("3:10");
+    expect(copy).toContain("3:00");
   });
 
   it("has the why-it-matters panel", () => {
-    for (const s of ["Why it matters", "Agents can misread", "Hidden orders exist", "Mistakes are costly", "SafeLabs Guard holds the action until the evidence checks out."]) {
+    for (const s of ["Why it matters", "Agents can misread", "Hidden orders exist", "Mistakes are costly", "SafeLabs Guard validates the proposed action before allowing it to proceed."]) {
       expect(copy, s).toContain(s);
     }
   });
 
   it("has the three how-it-works cards in one row from lg", () => {
-    for (const s of ["The guard sits between seeing and doing", "See and hear", "Check the ledger", "Allow or hold", "No model decides this step."]) {
+    for (const s of ["The guard sits between seeing and doing", "See and hear", "Propose and verify", "Allow, hold or block", "Guard refuses an invalid or unverifiable action. Nothing executes."]) {
       expect(copy, s).toContain(s);
     }
     expect(page).toMatch(/flex flex-col gap-3 lg:flex-row lg:flex-nowrap/);
@@ -76,7 +76,7 @@ describe("home page /", () => {
   it("explains the ledger and lists the five steps", () => {
     for (const s of ["WHAT IT IS", "WHY IT IS NEEDED", "WHY WE USE IT"]) expect(copy.toUpperCase()).toContain(s);
     const list = /<ol[^>]*aria-label="Order steps"[^>]*>(.*?)<\/ol>/s.exec(page)?.[1] ?? "";
-    for (const s of ["Mug", "Red mug in frame", "Notebook", "Blue notebook", "Cable", "USB-C cable", "Seal", "Box sealed", "Ship", "One-time approval"]) {
+    for (const s of ["Mug", "Red mug in frame", "Notebook", "Blue notebook", "Cable", "USB-C cable", "Seal", "Box sealed", "Ship", "Signed shipment approval"]) {
       expect(text(list), s).toContain(s);
     }
     expect(list.match(/border-accent/g)).toHaveLength(4);
@@ -100,7 +100,8 @@ describe("home page /", () => {
       "An extra item at the seal step",
       "The shipment is simulated",
       "English voice only",
-      "A hackathon demo, not a product",
+      "Working hackathon reference implementation; not yet production-validated",
+      "Demonstration scenarios represent individual test runs, not statistically established performance rates.",
       "English-only voice allowlist",
     ]) {
       expect(copy, s).toContain(s);

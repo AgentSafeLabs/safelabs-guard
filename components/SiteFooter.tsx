@@ -96,7 +96,7 @@ export default function SiteFooter() {
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-accent">Built by</p>
                 <p className="mt-1.5 text-[22px] font-bold leading-tight text-ink">Waqar Javed</p>
-                <p className="mt-1 text-sm text-muted">Startup Founder of Safe Labs AI Inc.</p>
+                <p className="mt-1 text-sm text-muted">Founder, Safe Labs AI Inc.</p>
               </div>
               <ul className="flex flex-wrap gap-2.5" aria-label="Profiles">
                 {SOCIAL_LINKS.map((s) => (
@@ -122,7 +122,7 @@ export default function SiteFooter() {
         </div>
 
         <p className="mt-10 border-t border-line pt-6 text-center text-sm text-muted">
-          © 2026 SafeLabs Guard <span aria-hidden="true">·</span> Built by Waqar Javed, Startup Founder of Safe Labs AI Inc.
+          © 2026 SafeLabs Guard <span aria-hidden="true">·</span> Built by Waqar Javed, Founder, Safe Labs AI Inc.
         </p>
       </div>
     </footer>

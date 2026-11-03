@@ -52,7 +52,7 @@ describe("footer content", () => {
   });
 
   it("has the copyright line", () => {
-    expect(copy).toContain("© 2026 SafeLabs Guard · Built by Waqar Javed, Startup Founder of Safe Labs AI Inc.");
+    expect(copy).toContain("© 2026 SafeLabs Guard · Built by Waqar Javed, Founder, Safe Labs AI Inc.");
   });
 
   it("uses a surface-2 background, a border-token top border and a 1200px container", () => {
@@ -83,7 +83,7 @@ describe("footer content", () => {
 
   it("has the Built by card with exactly the six profile links", () => {
     expect(copy).toContain("Built by Waqar Javed");
-    expect(copy).toContain("Startup Founder of Safe Labs AI Inc.");
+    expect(copy).toContain("Founder, Safe Labs AI Inc.");
     const profiles = /<ul[^>]*aria-label="Profiles"[^>]*>(.*?)<\/ul>/s.exec(FOOTER)![1];
     const anchors = tags(profiles, "a");
     expect(anchors.map((a) => a.href)).toEqual([
