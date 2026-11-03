@@ -20,7 +20,7 @@ SafeLabs Guard is a security checkpoint for AI agents. It checks the evidence an
 
 Built for the Meta Global AI Developer Hackathon by **Safe Labs AI Inc.** (Oct 26 - Nov 4, 2026).
 
-Status: a working reference implementation with measured results and known limits (see [Evaluation](#evaluation-and-benchmark-results) and [Limitations](#limitations-and-known-issues)). It is not yet a packaged SDK.
+Status: a working reference implementation with measured results and known limits (see [Evaluation](#evaluation-and-benchmark-results) and [Limitations](#limitations-and-known-issues)). TypeScript is the reference implementation; an alpha Python port of the guard core is available (see [Integration and Security](#integration-and-security)). There is no packaged SDK for the full agent.
 
 ## Table of Contents
 
@@ -161,9 +161,29 @@ Open http://localhost:3000/live for the live agent.
 
 All variables and modes: [Configuration](docs/CONFIGURATION.md).
 
+Only want the guard core? Install the Python port with `pip install safelabs-guard` (see [Integration and Security](#integration-and-security)).
+
 ## Integration and Security
 
-**Integration.** This repository is a reference implementation, not a packaged SDK. See the [Integration guide](docs/INTEGRATION.md).
+**Integration.** This repository is the TypeScript reference implementation, not a packaged SDK. A Python port of the guard core is published separately (below). See the [Integration guide](docs/INTEGRATION.md).
+
+**Python (alpha).** [`safelabs-guard` 0.1.0](https://pypi.org/project/safelabs-guard/) on PyPI; the source is in the `python/` folder of this repository. It requires Python 3.11+, has no runtime dependencies and is Apache-2.0.
+
+```bash
+pip install safelabs-guard
+```
+
+```python
+from safelabs_guard import create_ledger, guard_action
+
+ledger = create_ledger()
+gate = guard_action(ledger_state=ledger, spark_claimed_objects=["red mug"], sam_detected_objects=["red mug"],
+                    voice_transcript="", image_text="", proposed_action="ADVANCE")
+if gate.decision == "ALLOW":
+    ledger = gate.next_state
+```
+
+Scope: this is an alpha, reference port of the deterministic guard core only (ledger, reconcile, injection checks, action gate). It does not include the live service, the PackProof demo agent, or any Muse Spark, SAM 3.1 or Muse Voice calls; the caller supplies the claimed objects, detected objects, transcript and image text. More in the [Python port section of the Integration guide](docs/INTEGRATION.md#10-python-port-alpha).
 
 **Security.** Request limits and a scripted abuse test are in [Request-hardening checks](docs/REQUEST-HARDENING.md); they are not a security audit or a penetration test. Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 

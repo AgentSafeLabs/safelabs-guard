@@ -2,7 +2,7 @@
 
 ## 1. Status
 
-This repository is a reference implementation, not a packaged SDK. There is no npm package, no hosted API for third-party agents and no non-TypeScript client today. The ledger in the demo is fixed to ORDER-1042 (mug, notebook, cable, seal, ship). Planned work is listed in the [Roadmap](../README.md#roadmap); what the Guard does not do is in [Limits](../README.md#limitations-and-known-issues).
+This repository is a reference implementation, not a packaged SDK. There is no npm package and no hosted API for third-party agents. TypeScript is the reference implementation; an alpha Python port of the deterministic core exists (section 10). The ledger in the demo is fixed to ORDER-1042 (mug, notebook, cable, seal, ship). Planned work is listed in the [Roadmap](../README.md#roadmap); what the Guard does not do is in [Limits](../README.md#limitations-and-known-issues).
 
 Source: `package.json:2-4` (`"private": true`); `lib/guard/ledger.ts:21-27,41-48`.
 
@@ -13,7 +13,8 @@ Source: `package.json:2-4` (`"private": true`); `lib/guard/ledger.ts:21-27,41-48
 | (a) Embed the guard core in a Node/TypeScript agent | Available. Copy or import from `lib/guard/`. |
 | (b) Follow the PackProof pattern | Available. `lib/agent/run.ts` is a working perceive, propose, guard, execute loop. |
 | (c) Call the demo HTTP routes | Available as a reference only. Bound to the demo session and ORDER-1042; in production only an allow-listed browser origin is accepted (section 7). |
-| (d) Hosted API or SDK for other languages | Not available yet. |
+| (d) Python port of the guard core | Available as an alpha, core only (section 10). |
+| (e) Hosted API or SDK for other languages | Not available yet. |
 
 ## 3. The pattern
 
@@ -179,3 +180,25 @@ npm run benchmark      # 30-case ASI-MM mock regression
 ```
 
 Source: `package.json:5-19`. Benchmark numbers describe this demo only (ORDER-1042, synthetic media, small samples). They are not a guarantee for another workflow; see [Results](../README.md#evaluation-and-benchmark-results).
+
+## 10. Python port (alpha)
+
+[`safelabs-guard` 0.1.0](https://pypi.org/project/safelabs-guard/) is a Python port of the guard core. The source is in the `python/` folder of this repository (see `python/README.md`). It requires Python 3.11+, has no runtime dependencies and is Apache-2.0.
+
+```bash
+pip install safelabs-guard
+```
+
+```python
+from safelabs_guard import create_ledger, guard_action
+
+ledger = create_ledger()
+gate = guard_action(ledger_state=ledger, spark_claimed_objects=["red mug"], sam_detected_objects=["red mug"],
+                    voice_transcript="", image_text="", proposed_action="ADVANCE")
+if gate.decision == "ALLOW":
+    ledger = gate.next_state
+```
+
+**Scope.** It is an alpha, reference port of the deterministic guard core only (ledger, reconcile, injection checks, action gate). It does not include the live service, the PackProof demo agent, or any Muse Spark, SAM 3.1 or Muse Voice calls. The caller supplies the claimed objects, detected objects, transcript and image text.
+
+**Verification.** `python/` has 50 tests, including a 30-case ASI-MM parity test against the same cases as the TypeScript regression. During development it was also differential-tested against the TypeScript core on 8,000 generated cases with 0 mismatches; that harness is not included in the repo.
