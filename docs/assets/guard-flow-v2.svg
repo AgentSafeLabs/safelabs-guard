@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 780" width="1400" height="780" font-family="Inter,Segoe UI,Arial,sans-serif">
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#64748b"/></marker>
+<marker id="c" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#22d3ee"/></marker></defs>
+<rect width="1400" height="780" rx="20" fill="#0b1220"/>
+<g font-size="15" font-weight="800" letter-spacing="3" fill="#64748b" text-anchor="middle"><text x="215" y="46">1 · SENSE</text><text x="595" y="46">2 · PROPOSE</text><text x="935" y="46">3 · VERIFY</text><text x="1250" y="46">4 · DECIDE</text></g>
+<!-- inputs -->
+<g fill="#111c33" stroke="#334155" stroke-width="2"><rect x="30" y="110" width="150" height="70" rx="12"/><rect x="30" y="400" width="150" height="70" rx="12"/></g>
+<g fill="#e2e8f0" font-size="18" font-weight="700" text-anchor="middle"><text x="105" y="140">Camera</text><text x="105" y="430">Microphone</text></g>
+<g fill="#94a3b8" font-size="13" text-anchor="middle"><text x="105" y="162">or uploaded image</text><text x="105" y="452">recorded audio</text></g>
+<!-- perception -->
+<g fill="#0c2447" stroke="#38bdf8" stroke-width="2"><rect x="250" y="70" width="230" height="90" rx="14"/><rect x="250" y="190" width="230" height="90" rx="14"/><rect x="250" y="390" width="230" height="90" rx="14"/></g>
+<g fill="#fff" font-size="19" font-weight="800" text-anchor="middle"><text x="365" y="104">SAM 3.1</text><text x="365" y="224">Local OCR</text><text x="365" y="424">Muse Voice Transcribe</text></g>
+<g fill="#7dd3fc" font-size="14" text-anchor="middle"><text x="365" y="130">objects in the frame</text><text x="365" y="250">text in the frame</text><text x="365" y="450">what was said (English only)</text></g>
+<g stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#a)"><path d="M180 135H215V115H248"/><path d="M180 145H215V235H248"/><path d="M180 435H248"/></g>
+<!-- spark -->
+<rect x="520" y="140" width="150" height="160" rx="14" fill="#1b1442" stroke="#a78bfa" stroke-width="2.5"/>
+<g text-anchor="middle"><text x="595" y="178" fill="#fff" font-size="19" font-weight="800">Muse Spark</text><text x="595" y="204" fill="#c4b5fd" font-size="13">reads a text report</text><text x="595" y="222" fill="#c4b5fd" font-size="13">of SAM, OCR and voice</text><text x="595" y="258" fill="#ddd6fe" font-size="13" font-weight="700">proposes ADVANCE,</text><text x="595" y="276" fill="#ddd6fe" font-size="13" font-weight="700">SEAL, SHIP or HOLD</text></g>
+<g stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#a)"><path d="M480 115H500V190H518"/><path d="M480 235H500V225H518"/><path d="M480 435H500V250H518"/></g>
+<!-- guard -->
+<rect x="740" y="90" width="390" height="430" rx="18" fill="#0a1a33" stroke="#22d3ee" stroke-width="3"/>
+<text x="765" y="132" fill="#fff" font-size="24" font-weight="800">SafeLabs Guard</text>
+<text x="765" y="156" fill="#94a3b8" font-size="14">deterministic code, not a model</text>
+<g fill="#e2e8f0" font-size="15.5"><circle cx="772" cy="206" r="5" fill="#22d3ee"/><text x="790" y="212">Action legal at this ledger step</text>
+<circle cx="772" cy="248" r="5" fill="#22d3ee"/><text x="790" y="254">Objects match the ledger</text>
+<circle cx="772" cy="290" r="5" fill="#22d3ee"/><text x="790" y="296">No injection in text or speech</text>
+<circle cx="772" cy="332" r="5" fill="#22d3ee"/><text x="790" y="338">If present, voice is a plain confirmation</text>
+<circle cx="772" cy="374" r="5" fill="#22d3ee"/><text x="790" y="380">Fails closed if a required input is unavailable</text></g>
+<line x1="765" y1="410" x2="1105" y2="410" stroke="#1e3a5f"/>
+<g fill="#94a3b8" font-size="14"><text x="765" y="437">guardAction() then reconcile()</text><text x="765" y="459">Only one action is legal per step.</text><text x="765" y="481">Anything else cannot run.</text></g>
+<path d="M670 220H738" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#a)"/>
+<path d="M480 520H700V600H738" stroke="#22d3ee" stroke-width="2.5" stroke-dasharray="10 7" fill="none" marker-end="url(#c)" display="none"/>
+<path d="M365 480V560H738" stroke="#22d3ee" stroke-width="2.5" stroke-dasharray="10 7" fill="none" marker-end="url(#c)"/>
+<text x="400" y="548" fill="#22d3ee" font-size="14" font-style="italic">same evidence, sent direct</text>
+<!-- ledger -->
+<rect x="740" y="590" width="390" height="90" rx="14" fill="#111c33" stroke="#334155" stroke-width="2"/>
+<text x="935" y="618" text-anchor="middle" fill="#e2e8f0" font-size="16" font-weight="700">Ledger: expected state</text>
+<g font-size="13" font-weight="800" text-anchor="middle" fill="#cbd5e1"><rect x="755" y="634" width="64" height="30" rx="15" fill="#1d4ed8"/><text x="787" y="654" fill="#fff">MUG</text><text x="866" y="654">NOTEBOOK</text><text x="946" y="654">CABLE</text><text x="1006" y="654">SEAL</text><text x="1070" y="654">SHIP</text></g>
+<path d="M935 590V522" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#a)"/>
+<!-- decide -->
+<g stroke-width="2.5"><rect x="1190" y="80" width="190" height="120" rx="14" fill="#052e1a" stroke="#22c55e"/><rect x="1190" y="230" width="190" height="120" rx="14" fill="#3b2a05" stroke="#f59e0b"/><rect x="1190" y="380" width="190" height="130" rx="14" fill="#3b0a0a" stroke="#ef4444"/></g>
+<g text-anchor="middle" font-weight="900" font-size="26"><text x="1285" y="118" fill="#86efac">ALLOW</text><text x="1285" y="268" fill="#fcd34d">HOLD</text><text x="1285" y="418" fill="#fca5a5">BLOCK</text></g>
+<g text-anchor="middle" font-size="14"><text x="1285" y="146" fill="#bbf7d0">Action runs.</text><text x="1285" y="166" fill="#bbf7d0">Ledger advances.</text>
+<text x="1285" y="296" fill="#fde68a">The agent chose to hold.</text><text x="1285" y="316" fill="#fde68a">Nothing runs.</text>
+<text x="1285" y="446" fill="#fecaca">The Guard refused it.</text><text x="1285" y="466" fill="#fecaca">Nothing runs.</text><text x="1285" y="486" fill="#fecaca">Reason returned.</text></g>
+<g stroke="#22d3ee" stroke-width="2.5" fill="none" marker-end="url(#c)"><path d="M1130 250H1160V140H1188"/><path d="M1130 300H1188" /><path d="M1130 350H1160V440H1188"/></g>
+<!-- footer -->
+<text x="40" y="722" fill="#fcd34d" font-size="15" font-weight="700">Unguarded mode skips step 3.</text>
+<text x="40" y="746" fill="#94a3b8" font-size="14">The proposed action runs as is, so a wrong object or injected command can get through.</text>
+<text x="1360" y="746" text-anchor="end" fill="#64748b" font-size="14">Spark proposes. SafeLabs Guard verifies before anything runs.</text>
+</svg>
