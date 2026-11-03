@@ -4,18 +4,18 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://guard.agentsafelabs.com"),
-  title: "Safelabs Guard",
+  title: "SafeLabs Guard",
   description:
     "Checks what a vision/voice agent proposes against what it sees and hears, and blocks it when they disagree. PackProof demo.",
   openGraph: {
-    title: "Safelabs Guard",
+    title: "SafeLabs Guard",
     description: "Verify what the agent sees before it acts.",
-    siteName: "Safelabs Guard",
+    siteName: "SafeLabs Guard",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Safelabs Guard",
+    title: "SafeLabs Guard",
     description: "Verify what the agent sees before it acts.",
   },
 };

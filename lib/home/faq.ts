@@ -8,7 +8,7 @@ export interface FaqItem {
 
 export const FAQ: readonly FaqItem[] = [
   {
-    question: "What does Safelabs Guard stop?",
+    question: "What does SafeLabs Guard stop?",
     answer:
       "An agent acting on the wrong object, or on instructions hidden in a sign or a spoken command. It holds the action when the proposal and the evidence disagree.",
   },

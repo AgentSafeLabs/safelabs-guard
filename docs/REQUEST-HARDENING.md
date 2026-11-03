@@ -1,6 +1,6 @@
 # Request-hardening checks
 
-Request-level limits and a scripted abuse test for the Safelabs Guard routes. Moved out of the [README](../README.md).
+Request-level limits and a scripted abuse test for the SafeLabs Guard routes. Moved out of the [README](../README.md).
 
 ## Automated request-hardening checks (not a security audit)
 

@@ -8,7 +8,7 @@ import LiveVerification from "@/components/LiveVerification";
 import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
-  title: "Scenarios | Safelabs Guard",
+  title: "Scenarios | SafeLabs Guard",
   description:
     "Scripted ASI-MM scenarios replayed through the deterministic guard on mock perception clients. Not the live agent.",
 };
@@ -26,7 +26,7 @@ export default function Scenarios() {
             .
           </div>
           <header className="mb-8">
-            <h1 className="text-5xl font-black tracking-tight text-white sm:text-6xl">Safelabs Guard</h1>
+            <h1 className="text-5xl font-black tracking-tight text-white sm:text-6xl">SafeLabs Guard</h1>
             <p className="mt-2 text-xl text-zinc-300">
               Checks what a vision/voice agent proposes against what it sees and hears, and blocks it when they disagree.
             </p>

@@ -26,7 +26,7 @@ Full design: [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md)
 
 | Route | What it is |
 | :--- | :--- |
-| `/` | Home: what Safelabs Guard is, how a turn is checked, FAQ |
+| `/` | Home: what SafeLabs Guard is, how a turn is checked, FAQ |
 | `/live` | The PackProof agent with a camera or an uploaded image, and a microphone (guarded and unguarded modes) |
 | `/scenarios` | Scripted scenarios on mock perception, labelled as such |
 | `/api/agent/turn` | One agent turn (multipart: mode, session token, image, optional audio) |

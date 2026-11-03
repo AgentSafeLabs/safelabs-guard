@@ -16,7 +16,7 @@ export function DemoVideoFrame({ playing, onPlay, iframeRef }: { playing: boolea
         <iframe
           ref={iframeRef}
           src={YOUTUBE_EMBED_URL}
-          title="Safelabs Guard demo video"
+          title="SafeLabs Guard demo video"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture; fullscreen"
           allowFullScreen
           referrerPolicy="strict-origin-when-cross-origin"

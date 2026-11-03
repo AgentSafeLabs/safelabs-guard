@@ -42,7 +42,7 @@ describe("demo video card", () => {
     expect(iframe.src.startsWith("https://www.youtube-nocookie.com/embed/")).toBe(true);
     expect(iframe.src).toContain(YOUTUBE_ID);
     expect(iframe.src).toContain("autoplay=1");
-    expect(iframe.title).toBe("Safelabs Guard demo video");
+    expect(iframe.title).toBe("SafeLabs Guard demo video");
     expect(iframe.referrerPolicy).toBe("strict-origin-when-cross-origin");
     expect(iframe.allowfullscreen).toBeDefined();
     expect(iframe.allow).toContain("autoplay");

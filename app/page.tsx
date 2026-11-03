@@ -1,4 +1,4 @@
-// Home: what Safelabs Guard is, how a turn is checked, and the FAQ.
+// Home: what SafeLabs Guard is, how a turn is checked, and the FAQ.
 // Server component; the live agent is /live and the mock scenarios /scenarios.
 import type { Metadata } from "next";
 import Image from "next/image";
@@ -10,7 +10,7 @@ import SiteFooter from "@/components/SiteFooter";
 import { REPO_URL } from "@/lib/nav/links";
 
 export const metadata: Metadata = {
-  title: "Safelabs Guard: verify what the agent sees before it acts",
+  title: "SafeLabs Guard: verify what the agent sees before it acts",
   description:
     "A deterministic check between a camera and voice agent and its next action. It holds the action when the proposal and the evidence disagree.",
 };
@@ -94,7 +94,7 @@ export default function Home() {
                 Make sure your AI agent saw the right thing before it acts.
               </h1>
               <p className="mt-5 max-w-xl text-lg text-soft">
-                Safelabs Guard compares what an AI agent sees and hears with your plan. If something is wrong, missing or planted, the agent stops
+                SafeLabs Guard compares what an AI agent sees and hears with your plan. If something is wrong, missing or planted, the agent stops
                 instead of acting.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -131,7 +131,7 @@ export default function Home() {
                 ))}
               </div>
               <p className="mt-8 text-center text-base font-semibold text-accent sm:text-lg">
-                Safelabs Guard holds the action until the evidence checks out.
+                SafeLabs Guard holds the action until the evidence checks out.
               </p>
             </div>
           </section>

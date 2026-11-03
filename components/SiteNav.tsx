@@ -17,7 +17,7 @@ export default function SiteNav() {
             sizes="(min-width: 640px) 213px, 164px"
             width={900}
             height={220}
-            alt="Safelabs Guard"
+            alt="SafeLabs Guard"
             className="h-10 w-auto sm:h-[52px]"
           />
         </Link>

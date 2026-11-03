@@ -7,7 +7,7 @@ import { FAQ } from "./faq";
 import { render, tags, text } from "../site/test-utils";
 
 const QUESTIONS = [
-  "What does Safelabs Guard stop?",
+  "What does SafeLabs Guard stop?",
   "Does an AI model make the final decision?",
   "What happens if a part is down?",
   "Is the shipment real?",
@@ -23,7 +23,7 @@ describe("home page /", () => {
   const copy = text(page);
 
   it("has the title and description from the brief", () => {
-    expect(String(metadata.title)).toBe("Safelabs Guard: verify what the agent sees before it acts");
+    expect(String(metadata.title)).toBe("SafeLabs Guard: verify what the agent sees before it acts");
     expect(String(metadata.description)).not.toBe("");
   });
 
@@ -31,7 +31,7 @@ describe("home page /", () => {
     expect(copy).toContain("A safety check for AI agents that use cameras and voice");
     expect(page).toMatch(/<h1[^>]*>Make sure your AI agent saw the right thing before it acts\.<\/h1>/);
     expect(copy).toContain(
-      "Safelabs Guard compares what an AI agent sees and hears with your plan. If something is wrong, missing or planted, the agent stops instead of acting.",
+      "SafeLabs Guard compares what an AI agent sees and hears with your plan. If something is wrong, missing or planted, the agent stops instead of acting.",
     );
     const links = tags(page, "a");
     expect(links.find((a) => a.href === "/live" && /min-h-12/.test(a.class))).toBeDefined();
@@ -60,7 +60,7 @@ describe("home page /", () => {
   });
 
   it("has the why-it-matters panel", () => {
-    for (const s of ["Why it matters", "Agents can misread", "Hidden orders exist", "Mistakes are costly", "Safelabs Guard holds the action until the evidence checks out."]) {
+    for (const s of ["Why it matters", "Agents can misread", "Hidden orders exist", "Mistakes are costly", "SafeLabs Guard holds the action until the evidence checks out."]) {
       expect(copy, s).toContain(s);
     }
   });

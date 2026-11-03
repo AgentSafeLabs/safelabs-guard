@@ -1,4 +1,4 @@
-# Contributing to Safelabs Guard
+# Contributing to SafeLabs Guard
 
 ## Setup
 

@@ -86,7 +86,7 @@ describe("site nav and layout", () => {
   it("draws the logo as the wordmark image with a 2x source", () => {
     const markup = html(createElement(SiteNav));
     const img = tags(markup, "img")[0];
-    expect(img.alt).toBe("Safelabs Guard");
+    expect(img.alt).toBe("SafeLabs Guard");
     expect(img.src).toBe("/brand/wordmark.png");
     expect(img.srcSet).toContain("/brand/wordmark@2x.png 1800w");
     expect(img.class).toMatch(/\bh-10\b/);
@@ -102,7 +102,7 @@ describe("site nav and layout", () => {
   });
 
   it("has a default title and description", () => {
-    expect(String(layoutMetadata.title)).toBe("Safelabs Guard");
+    expect(String(layoutMetadata.title)).toBe("SafeLabs Guard");
     expect(String(layoutMetadata.description)).not.toBe("");
   });
 });

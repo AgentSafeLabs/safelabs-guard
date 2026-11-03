@@ -42,7 +42,7 @@ describe("footer content", () => {
 
   it("has the stacked logo, nothing under it, and the hackathon chip", () => {
     const img = tags(FOOTER, "img")[0];
-    expect(img.alt).toBe("Safelabs Guard");
+    expect(img.alt).toBe("SafeLabs Guard");
     expect(img.src).toBe("/brand/stacked.png");
     expect(img.srcSet).toContain("/brand/stacked@2x.png 1100w");
     expect(copy).not.toContain("Verify what the agent sees before it acts.");
@@ -52,7 +52,7 @@ describe("footer content", () => {
   });
 
   it("has the copyright line", () => {
-    expect(copy).toContain("© 2026 Safelabs Guard · Built by Waqar Javed, Startup Founder of Safe Labs AI Inc.");
+    expect(copy).toContain("© 2026 SafeLabs Guard · Built by Waqar Javed, Startup Founder of Safe Labs AI Inc.");
   });
 
   it("uses a surface-2 background, a border-token top border and a 1200px container", () => {

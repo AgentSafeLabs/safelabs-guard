@@ -1,6 +1,6 @@
-# Safelabs Guard — Architecture
+# SafeLabs Guard — Architecture
 
-Safelabs Guard sits between a multimodal agent's perception and its next action. Three Meta models each report one view of the world; a deterministic ledger holds the ground truth; Guard compares them and returns **ALLOW** or **BLOCK** before the agent can seal, ship, or approve.
+SafeLabs Guard sits between a multimodal agent's perception and its next action. Three Meta models each report one view of the world; a deterministic ledger holds the ground truth; Guard compares them and returns **ALLOW** or **BLOCK** before the agent can seal, ship, or approve.
 
 ```mermaid
 flowchart LR

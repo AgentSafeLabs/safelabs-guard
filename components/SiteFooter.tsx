@@ -66,7 +66,7 @@ export default function SiteFooter() {
               sizes="260px"
               width={640}
               height={770}
-              alt="Safelabs Guard"
+              alt="SafeLabs Guard"
               className="h-auto w-[200px] lg:w-[260px]"
             />
           </div>
@@ -122,7 +122,7 @@ export default function SiteFooter() {
         </div>
 
         <p className="mt-10 border-t border-line pt-6 text-center text-sm text-muted">
-          © 2026 Safelabs Guard <span aria-hidden="true">·</span> Built by Waqar Javed, Startup Founder of Safe Labs AI Inc.
+          © 2026 SafeLabs Guard <span aria-hidden="true">·</span> Built by Waqar Javed, Startup Founder of Safe Labs AI Inc.
         </p>
       </div>
     </footer>

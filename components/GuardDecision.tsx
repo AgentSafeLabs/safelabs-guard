@@ -45,7 +45,7 @@ export default function GuardDecision({ verdict, reason, guardOn, sources }: Gua
         aria-live="assertive"
       >
         <div className="text-xs font-bold uppercase tracking-[0.3em] opacity-80">
-          {guardOn ? "Safelabs Guard" : "Unguarded agent"}
+          {guardOn ? "SafeLabs Guard" : "Unguarded agent"}
         </div>
         <div className="mt-1 text-6xl font-black tracking-tight sm:text-7xl">{verdict}</div>
         <p className="mt-3 text-lg font-semibold">{reason}</p>

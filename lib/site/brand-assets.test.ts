@@ -63,7 +63,7 @@ describe("brand assets", () => {
 
   it("sets metadataBase and share text; the image files supply og:image and twitter:image", () => {
     expect(metadata.metadataBase).toBeDefined();
-    expect(metadata.openGraph?.title).toBe("Safelabs Guard");
+    expect(metadata.openGraph?.title).toBe("SafeLabs Guard");
     expect(metadata.twitter).toMatchObject({ card: "summary_large_image" });
   });
 });

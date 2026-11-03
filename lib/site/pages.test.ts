@@ -20,7 +20,7 @@ describe("/scenarios", () => {
   });
 
   it("has its own title", () => {
-    expect(String(scenariosMetadata.title)).toBe("Scenarios | Safelabs Guard");
+    expect(String(scenariosMetadata.title)).toBe("Scenarios | SafeLabs Guard");
   });
 });
 
@@ -29,13 +29,13 @@ describe("/live", () => {
   const copy = text(page);
 
   it("has the PackProof agent title and heading", () => {
-    expect(String(liveMetadata.title)).toBe("PackProof agent | Safelabs Guard");
+    expect(String(liveMetadata.title)).toBe("PackProof agent | SafeLabs Guard");
     expect(page).toMatch(/<h1[^>]*>PackProof agent<\/h1>/);
   });
 
   it("has the short intro and keeps the long text under How it works", () => {
     expect(copy).toContain(
-      "Pack ORDER-1042 (red mug, blue notebook, USB-C cable) in front of your camera, one step at a time. Safelabs Guard checks each proposed action against what SAM sees and what was said.",
+      "Pack ORDER-1042 (red mug, blue notebook, USB-C cable) in front of your camera, one step at a time. SafeLabs Guard checks each proposed action against what SAM sees and what was said.",
     );
     const how = /<details[^>]*>\s*<summary[^>]*>\s*How it works.*?<\/details>/s.exec(page)?.[0] ?? "";
     expect(how).not.toBe("");

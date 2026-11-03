@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 570" width="1100" height="570" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
-  <title id="t">Safelabs Guard flow</title>
+  <title id="t">SafeLabs Guard flow</title>
   <desc id="d">Camera and microphone feed SAM 3.1, local OCR and Muse Voice Transcribe. Muse Spark reads a text report and proposes an action. Guard checks the proposal against the same evidence and the ledger, then the outcome is ALLOW, HOLD or BLOCK.</desc>
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#57606a"/></marker>
@@ -60,7 +60,7 @@
 
   <!-- Guard -->
   <rect x="610" y="48" width="270" height="384" rx="14" fill="#0f172a"/>
-  <text x="630" y="82" font-size="19" font-weight="800" fill="#ffffff">Safelabs Guard</text>
+  <text x="630" y="82" font-size="19" font-weight="800" fill="#ffffff">SafeLabs Guard</text>
   <text x="630" y="102" font-size="12" fill="#94a3b8">deterministic code, not a model</text>
   <g font-size="13" fill="#e2e8f0">
     <circle cx="636" cy="140" r="4" fill="#34d399"/><text x="650" y="145">Action legal at this ledger step</text>
