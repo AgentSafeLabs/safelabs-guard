@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "safelabs-guard"
+version = "0.1.0"
+description = "Python port of the SafeLabs Guard core: a deterministic checkpoint that validates an AI agent's evidence and proposed action before it runs."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Waqar Javed" }]
+keywords = ["ai-agents", "agent-security", "guardrails", "prompt-injection", "multimodal", "deterministic-validation"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Security",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://guard.agentsafelabs.com"
+Repository = "https://github.com/AgentSafeLabs/safelabs-guard"
+"Live demo" = "https://guard.agentsafelabs.com/live"
+"Demo video" = "https://www.youtube.com/watch?v=thHwl6IJM7Y"
+Issues = "https://github.com/AgentSafeLabs/safelabs-guard/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+safelabs_guard = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

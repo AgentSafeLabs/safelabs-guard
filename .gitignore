@@ -27,3 +27,11 @@ docs/audit/
 
 # tier-2 benchmark: live-mode results are never committed
 bench/results/live.json
+
+# python package (python/): build output and local environments
+python/.venv/
+python/build/
+python/dist/
+python/**/*.egg-info/
+python/**/__pycache__/
+python/.pytest_cache/
