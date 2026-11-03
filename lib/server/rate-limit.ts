@@ -1,4 +1,4 @@
-// Abuse limits for the billed routes (/api/agent/turn, /api/guard/live-check).
+// Abuse limits for the billed routes (/api/agent/turn, /api/guard/live-check, status probe).
 //
 // BEST-EFFORT ONLY: all state lives in this process's memory, so each
 // serverless instance has its own window and its own daily budget, and both

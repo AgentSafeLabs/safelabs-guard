@@ -37,4 +37,4 @@ The live agent page is separate from the mock-perception scenarios on `/scenario
 
 Not verified: live camera capture, microphone recording in a browser, real-photo accuracy, and a shared (global) rate-limit budget.
 
-Other limits are under [Limits](../README.md#limits). Explicit mock mode is under [Quick Start](../README.md#quick-start).
+Other limits are under [Limits](../README.md#limitations-and-known-issues). Explicit mock mode is under [Quick Start](../README.md#quick-start).

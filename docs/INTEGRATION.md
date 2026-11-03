@@ -2,7 +2,7 @@
 
 ## 1. Status
 
-This repository is a reference implementation, not a packaged SDK. There is no npm package, no hosted API for third-party agents and no non-TypeScript client today. The ledger in the demo is fixed to ORDER-1042 (mug, notebook, cable, seal, ship). Planned work is listed in the [Roadmap](../README.md#roadmap); what the Guard does not do is in [Limits](../README.md#limits).
+This repository is a reference implementation, not a packaged SDK. There is no npm package, no hosted API for third-party agents and no non-TypeScript client today. The ledger in the demo is fixed to ORDER-1042 (mug, notebook, cable, seal, ship). Planned work is listed in the [Roadmap](../README.md#roadmap); what the Guard does not do is in [Limits](../README.md#limitations-and-known-issues).
 
 Source: `package.json:2-4` (`"private": true`); `lib/guard/ledger.ts:21-27,41-48`.
 
@@ -178,4 +178,4 @@ npm run bench:replay   # 40-case recorded-response report, no live calls
 npm run benchmark      # 30-case ASI-MM mock regression
 ```
 
-Source: `package.json:5-19`. Benchmark numbers describe this demo only (ORDER-1042, synthetic media, small samples). They are not a guarantee for another workflow; see [Results](../README.md#results).
+Source: `package.json:5-19`. Benchmark numbers describe this demo only (ORDER-1042, synthetic media, small samples). They are not a guarantee for another workflow; see [Results](../README.md#evaluation-and-benchmark-results).
