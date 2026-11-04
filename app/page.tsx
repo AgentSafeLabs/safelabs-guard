@@ -103,7 +103,7 @@ export default function Home() {
               </h1>
               <p className="mt-5 max-w-xl text-lg text-soft">
                 SafeLabs Guard independently checks an AI agent&apos;s proposed action against visual and voice evidence and a predefined workflow
-                ledger. If the evidence does not support the action, SafeLabs Guard prevents it from executing.
+                ledger. If the evidence does not support the action, Guard prevents it from executing.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link href="/live" className={btnPrimary}>
@@ -149,7 +149,7 @@ export default function Home() {
             <Heading
               id="how-title"
               label="How it works"
-              title="The SafeLabs Guard sits between seeing and doing"
+              title="The guard sits between seeing and doing"
               sub="The agent proposes an action. SafeLabs Guard independently checks it against the evidence and ledger. Only a validated action proceeds."
             />
             <div className="flex flex-col gap-3 lg:flex-row lg:flex-nowrap lg:items-stretch">
@@ -198,7 +198,7 @@ export default function Home() {
                     <span className="font-bold text-hold-text">HOLD:</span> The agent chooses to wait. Nothing executes.
                   </li>
                   <li>
-                    <span className="font-bold text-danger-text">BLOCK:</span> SafeLabs Guard refuses an invalid or unverifiable action. Nothing executes.
+                    <span className="font-bold text-danger-text">BLOCK:</span> Guard refuses an invalid or unverifiable action. Nothing executes.
                   </li>
                 </ul>
               </div>
@@ -218,7 +218,7 @@ export default function Home() {
                 { label: "What it is", text: "The plan, written down before the agent starts: mug, notebook, cable, seal, then ship." },
                 {
                   label: "Why it is needed",
-                  text: "An AI model can guess, be fooled or skip ahead. A fixed checklist does not. Plain code compares the evidence with it. The same evidence, proposed action and ledger state produce the same deterministic SafeLabs Guard decision.",
+                  text: "An AI model can guess, be fooled or skip ahead. A fixed checklist does not. Plain code compares the evidence with it. The same evidence, proposed action and ledger state produce the same deterministic Guard decision.",
                 },
                 {
                   label: "Why we use it",
@@ -242,8 +242,9 @@ export default function Home() {
                   return (
                     <li key={s.n} className="relative flex items-center gap-4 lg:flex-col lg:gap-0 lg:text-center">
                       <span
-                        className={`relative z-10 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 bg-surface text-base font-bold ${last ? "border-pending text-muted" : "border-accent text-accent"
-                          }`}
+                        className={`relative z-10 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 bg-surface text-base font-bold ${
+                          last ? "border-pending text-muted" : "border-accent text-accent"
+                        }`}
                       >
                         {s.n}
                       </span>
@@ -260,13 +261,13 @@ export default function Home() {
 
           {/* The rules */}
           <section className={SECTION} aria-labelledby="checks-title">
-            <Heading id="checks-title" label="The rules" title="What the SafeLabs Guard checks" />
+            <Heading id="checks-title" label="The rules" title="What the guard checks" />
             <div className="grid gap-4 md:grid-cols-3">
               {[
                 {
                   icon: <CheckIcon className="h-6 w-6" />,
                   title: "Right object",
-                  text: "A different object or missing required item causes SafeLabs Guard to block the proposed action.",
+                  text: "A different object or missing required item causes Guard to block the proposed action.",
                 },
                 {
                   icon: <AlertIcon className="h-6 w-6" />,
@@ -276,7 +277,7 @@ export default function Home() {
                 {
                   icon: <ShieldCheckIcon className="h-6 w-6" />,
                   title: "Fails closed",
-                  text: "If a required input is unavailable or validation cannot be completed, SafeLabs Guard blocks the proposed action. Voice is optional; silence is allowed.",
+                  text: "If a required input is unavailable or validation cannot be completed, Guard blocks the proposed action. Voice is optional; silence is allowed.",
                 },
               ].map((c) => (
                 <div key={c.title} className={`${card} border-t-[3px] border-t-accent`}>
@@ -299,9 +300,9 @@ export default function Home() {
             <div className="grid gap-4 md:grid-cols-2">
               <DemoMoment
                 accent="block"
-                title="Wrong mug in frame"
+                title="Banana in frame"
                 chip="BLOCK"
-                text="The ledger expects the red mug first. A different mug is in view, so SafeLabs Guard blocks the proposed action and the ledger does not advance."
+                text="The ledger expects the red mug first. A banana is in view, so Guard blocks the proposed action and the ledger does not advance."
               />
               <DemoMoment
                 accent="allow"
@@ -350,7 +351,7 @@ export default function Home() {
               </div>
             </div>
             <p className="mx-auto mt-6 max-w-3xl text-center text-sm text-muted sm:text-base">
-              The agent&apos;s own model often holds by itself. The SafeLabs Guard adds fixed rules that do not depend on the model: ledger order, flagged
+              The agent&apos;s own model often holds by itself. The guard adds fixed rules that do not depend on the model: ledger order, flagged
               instructions and an English-only voice allowlist.
             </p>
           </section>

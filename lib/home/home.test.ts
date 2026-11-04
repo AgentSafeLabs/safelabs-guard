@@ -84,7 +84,7 @@ describe("home page /", () => {
   });
 
   it("has the three rule cards and the two demo moments", () => {
-    for (const s of ["Right object", "Hidden instructions", "Fails closed", "Wrong mug in frame", "Red mug in frame", "STEP 1 OF 5 · VERIFY THE MUG"]) {
+    for (const s of ["Right object", "Hidden instructions", "Fails closed", "Banana in frame", "Red mug in frame", "STEP 1 OF 5 · VERIFY THE MUG"]) {
       expect(copy.toUpperCase(), s).toContain(s.toUpperCase());
     }
     expect(page.match(/border-l-\[5px\]/g)).toHaveLength(2);
