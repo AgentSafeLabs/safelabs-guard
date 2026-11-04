@@ -162,6 +162,8 @@ npm install
 # (mock perception, local demo only). For live calls,
 # set it to false and add the three Meta keys.
 cp .env.example .env.local
+# Generate a random SAFELABS_TOKEN_SECRET (32+ characters) and write it into .env.local; without it the Ship step can fail locally with 'bad signature':
+sed -i.bak "s|^SAFELABS_TOKEN_SECRET=.*|SAFELABS_TOKEN_SECRET=$(openssl rand -hex 32)|" .env.local && rm .env.local.bak
 npm run dev
 ```
 
