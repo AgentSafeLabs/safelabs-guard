@@ -8,7 +8,7 @@ export default function ProgressCard({ ledger, lastDecision }: { ledger: LedgerL
   const p = deriveProgress(ledger, lastDecision);
   const segments = p.segments.map((s) => ({
     ...s,
-    srText: s.state === "done" ? "done" : s.state === "current" ? "current step" : s.state === "held" ? "held at this step" : "not started",
+    srText: s.state === "done" ? "done" : s.state === "current" ? "current step" : s.state === "held" ? "held at this step" : s.state === "blocked" ? "blocked at this step" : "not started",
   }));
   return (
     <section aria-label="Progress" className="rounded-2xl border border-line bg-surface p-4 sm:p-5">

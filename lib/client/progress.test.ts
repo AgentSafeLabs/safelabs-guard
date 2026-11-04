@@ -30,10 +30,12 @@ describe("deriveProgress", () => {
     expect(states(p)).toEqual(["done", "done", "current", "pending", "pending"]);
   });
 
-  it("marks the current step held after a HOLD or BLOCK", () => {
-    for (const d of ["HOLD", "BLOCK"]) {
-      expect(states(deriveProgress({ stepIndex: 1, status: "IN_PROGRESS" }, d))).toEqual(["done", "held", "pending", "pending", "pending"]);
-    }
+  it("marks the current step held after a HOLD (the agent's own choice)", () => {
+    expect(states(deriveProgress({ stepIndex: 1, status: "IN_PROGRESS" }, "HOLD"))).toEqual(["done", "held", "pending", "pending", "pending"]);
+  });
+
+  it("marks the current step blocked after a BLOCK (a Guard refusal), never held", () => {
+    expect(states(deriveProgress({ stepIndex: 1, status: "IN_PROGRESS" }, "BLOCK"))).toEqual(["done", "blocked", "pending", "pending", "pending"]);
   });
 
   it("does not hold an unguarded run (no decision)", () => {

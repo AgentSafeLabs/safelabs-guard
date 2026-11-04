@@ -33,7 +33,7 @@ export function DemoVideoFrame({ playing, onPlay, iframeRef }: { playing: boolea
       className="group relative block aspect-video w-full overflow-hidden rounded-xl bg-surface-2"
     >
       <Image
-        src="/brand/demo-poster.jpg"
+        src="/brand/demo-poster-explainer.jpg"
         alt=""
         width={1280}
         height={720}

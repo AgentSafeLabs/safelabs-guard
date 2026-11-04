@@ -25,7 +25,7 @@ describe("demo video card", () => {
   });
 
   it("shows the poster image from /brand, with the 3:00 badge", () => {
-    expect(card).toContain("demo-poster.jpg");
+    expect(card).toContain("demo-poster-explainer.jpg");
     expect(card).toContain("3:00");
   });
 

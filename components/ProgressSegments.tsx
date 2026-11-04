@@ -14,6 +14,7 @@ const BAR: Record<SegmentState, string> = {
   done: "bg-accent",
   current: "bg-accent outline outline-2 outline-offset-2 outline-accent",
   held: "bg-hold-text",
+  blocked: "bg-danger-text",
   pending: "bg-pending",
 };
 
@@ -21,11 +22,11 @@ export default function ProgressSegments({ segments, label }: { segments: readon
   return (
     <ol className="grid grid-cols-5 gap-2" aria-label={label}>
       {segments.map((s) => (
-        <li key={s.label} aria-current={s.state === "current" || s.state === "held" ? "step" : undefined}>
+        <li key={s.label} aria-current={s.state === "current" || s.state === "held" || s.state === "blocked" ? "step" : undefined}>
           <div className={`h-2 rounded-full ${BAR[s.state]}`} aria-hidden="true" />
           <span
             className={`mt-2 block text-center text-xs sm:text-sm ${
-              s.state === "held" ? "font-bold text-hold-text" : s.state === "current" ? "font-bold text-allow-text" : "text-muted"
+              s.state === "held" ? "font-bold text-hold-text" : s.state === "blocked" ? "font-bold text-danger-text" : s.state === "current" ? "font-bold text-allow-text" : "text-muted"
             }`}
           >
             {s.label}

@@ -15,7 +15,7 @@ export const STEP_NAMES: Readonly<Record<LedgerStep, string>> = {
 /** Labels under the five segments, in step order. */
 export const STEP_SHORT = ["Mug", "Notebook", "Cable", "Seal", "Ship"] as const;
 
-export type SegmentState = "done" | "current" | "held" | "pending";
+export type SegmentState = "done" | "current" | "held" | "blocked" | "pending";
 
 export interface ProgressView {
   /** 1-based number shown as "Step N of 5". */
@@ -36,7 +36,8 @@ export interface LedgerLike {
 
 /**
  * `ledger` is null before the first turn. `lastDecision` is the latest turn's
- * guard decision (null when unguarded or no turn yet); a HOLD or BLOCK means
+ * guard decision (null when unguarded or no turn yet); a HOLD (the agent's own
+ * choice) shows "held", a BLOCK (a Guard refusal) shows "blocked"; either way
  * the current step did not advance.
  */
 export function deriveProgress(ledger: LedgerLike | null, lastDecision: string | null): ProgressView {
@@ -45,7 +46,8 @@ export function deriveProgress(ledger: LedgerLike | null, lastDecision: string |
   const raw = ledger ? (complete ? total : ledger.stepIndex) : 0;
   const index = Math.min(Math.max(Number.isInteger(raw) ? raw : 0, 0), total);
   const currentIndex = Math.min(index, total - 1);
-  const held = !complete && (lastDecision === "HOLD" || lastDecision === "BLOCK");
+  const held = !complete && lastDecision === "HOLD";
+  const blocked = !complete && lastDecision === "BLOCK";
   return {
     stepNumber: currentIndex + 1,
     total,
@@ -54,7 +56,7 @@ export function deriveProgress(ledger: LedgerLike | null, lastDecision: string |
     complete,
     segments: STEPS.map((_, i) => ({
       label: STEP_SHORT[i],
-      state: i < index ? "done" : i === index ? (held ? "held" : "current") : "pending",
+      state: i < index ? "done" : i === index ? (blocked ? "blocked" : held ? "held" : "current") : "pending",
     })),
   };
 }
